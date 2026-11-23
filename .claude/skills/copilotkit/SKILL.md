@@ -1,6 +1,6 @@
 ---
 name: copilotkit
-description: Use for OpenBot CopilotKit v2 and AG-UI: remote agent rendering, streamed proposals, editable shot cards and human review.
+description: "Use for OpenBot CopilotKit v2 and AG-UI: remote agent rendering, streamed proposals, editable shot cards and human review."
 ---
 
 # Copilotkit — iPix → OpenBot
