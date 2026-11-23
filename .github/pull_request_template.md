@@ -31,7 +31,7 @@
 
 **User journey:** N/A — no affected user journey. [When relevant, replace with actual user → action → result and embed a task-specific Mermaid diagram here.]
 
-**Architecture / data flow:** N/A — no affected cross-system flow. [When relevant, embed verified Mermaid showing UI → API/gateway → Bot/agent → source of truth; include retries/failures when material.]
+**Architecture / data flow:** N/A — no affected system flow. [When relevant, show the real app → server → Bot → database journey with Mermaid. Include failure and retry paths when useful.]
 
 <!-- Embed real Mermaid code blocks directly in the PR description for meaningful user journeys or architecture changes. Never leave placeholder diagrams visible or treat diagrams as test evidence. -->
 
@@ -60,21 +60,23 @@
 | Focused tests | NOT RUN | [Exact `bun test ...` or other relevant command] |
 | Format / lint / types (if relevant) | NOT RUN | [`bun run format:check`, `bun run lint`, `bun run typecheck`] |
 | GitHub CI: `verify` | PENDING | [CI run link for the current PR head] |
-| Applicable path-specific CI / browser / API | N/A | [Relevant job(s), screenshot, query or N/A reason] |
-| Multi-replica / gateway / audit, if affected | N/A | [Test and concrete result or N/A reason] |
+| Browser / API tests (when needed) | N/A | [Test results or why not needed] |
+| Docker image build (when Dockerfile changes) | N/A | [Request `full-ci` and link the passing `component-dockerfiles` job] |
+| Multiple servers / permissions, if changed | N/A | [Test result or why not needed] |
 
 **Unverified:** [Missing proof or None.]
 
-<!-- CI chooses jobs according to the changed paths. Do not report skipped jobs as execution proof; the aggregate "verify" job decides if the applicable checks passed. For every PASS identify exact SHA, environment and evidence. -->
+<!-- Most CI checks depend on which files changed. Exception: `component-dockerfiles` runs on PRs only with the `full-ci` label. `verify` accepts skipped jobs as passing, so a green `verify` does NOT prove Docker images built. For Dockerfile changes, ask a maintainer to add `full-ci` and confirm `component-dockerfiles` passed. For every PASS record the tested SHA, environment and evidence. -->
 
 ## 7. Pre-Merge Checklist
 
 - [ ] **Requirements / scope:** Success criteria match the actual task; no unrelated changes.
 - [ ] **Review comments:** Recheck each finding against current code; fix valid issues, explain stale claims and resolve blocking threads.
-- [ ] **Tests / CI:** Focused tests and the required GitHub `verify` check pass on the current PR head; affected jobs ran or were correctly skipped by CI.
+- [ ] **Tests / CI:** Focused tests and GitHub `verify` pass on the latest commit. Check which jobs actually ran—skipped is not the same as tested.
+- [ ] **Dockerfiles:** If a Dockerfile changed, ask for the `full-ci` label and confirm `component-dockerfiles` passed. `verify` can pass even when the Dockerfile build was skipped.
 - [ ] **Real workflow:** Run affected UI/API/browser tests; add screenshots where UI changed, and safe failure/retry checks where relevant.
-- [ ] **Multi-replica:** Explain request-spanning state storage, second-replica outcome, concurrency guard, cross-replica WebSocket fan-out and new listeners/ports/schedules. Test affected cases or mark N/A with reason.
-- [ ] **Gateway / audit:** Acting calls still resolve → decide → audit → act. Refusals and failures are recorded; server-resolvable facts are not trusted from client input.
+- [ ] **Multiple servers:** If another server handles the next request, does saved data remain correct? What prevents duplicate actions? Do browser updates reach all servers? Are new scheduled jobs, listeners and ports safe? Test what changed or explain N/A.
+- [ ] **Permissions and logs:** Bot actions still pass through the server's permission checks (`resolve → decide → audit → act`). Record denied/failed actions; look up trusted facts on the server instead of accepting them from the browser.
 - [ ] **Changelog:** Add an `Unreleased` entry in `CHANGELOG.md`, or explain why this change has no deployment behavior impact.
 - [ ] **Merge readiness:** No blocking defects; required reviews and branch rules satisfied.
 
@@ -86,7 +88,7 @@
 - [ ] **1. Verify merge:** Confirm merged SHA, intended files on `main` and relevant main CI.
 - [ ] **2. Verify deployment:** Confirm affected server, web, desktop or mobile environments use the intended version, if deployed.
 - [ ] **3. Verify database / config:** Check required migrations and API contracts. Avoid destructive production operations without explicit authorization and a recovery plan.
-- [ ] **4. Test live result:** Verify affected behavior, durable data, organization boundaries, multi-replica delivery and failures when relevant. Read-only by default; production writes require explicit safe test scope and cleanup.
+- [ ] **4. Test live result:** Check the affected feature, saved data, access rules, updates across servers and error handling when relevant. Start with read-only checks; writing tests need explicit authorization, safe test data and cleanup.
 - [ ] **5. Fix failures:** Identify the root cause; make the smallest correction through the normal PR process, then retest and redeploy or roll back safely.
 - [ ] **6. Update GitHub / task:** Record URLs, screenshots/logs, tested SHA, fixes and remaining work. Close only when acceptance criteria are proven.
 - [ ] **7. Clean up:** Remove obsolete worktrees/branches only after ensuring no uncommitted or unrelated work is lost.
