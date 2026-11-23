@@ -42,7 +42,7 @@ Open **http://localhost:3010**. The example configuration uses single-user local
 | Deployment | [Deployment](docs/deployment.md) |
 | Bots and external agents | [Bots](docs/coworkers.md) |
 | API contracts | [API](api/README.md) |
-| Adapted iPix developer skills | [Skill index](.claude/skills/README-ipix.md) |
+| Adapted iPix developer skills | [Skills directory](.claude/skills/) |
 
 ## Licensing and upstream
 
