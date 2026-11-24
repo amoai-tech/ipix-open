@@ -54,6 +54,10 @@ test("two positive and two near-miss evaluation examples distinguish their scope
 test("guidance forbids raw secrets and requires observable runtime evidence", () => {
   const obs = read(".claude/skills/production-observability/SKILL.md");
   const blast = read(".claude/skills/blast-radius-analysis/SKILL.md");
+  expect(obs).not.toContain("`root-cause-debugging`");
+  expect(
+    read(".claude/skills/evals/observability-blast-routing.json"),
+  ).not.toContain("root-cause-debugging");
   for (const t of ["secrets", "readback", "NOT VERIFIED", "existing"])
     expect(obs).toContain(t);
   for (const t of ["Graphify", "NOT VERIFIED", "test", "generic"])

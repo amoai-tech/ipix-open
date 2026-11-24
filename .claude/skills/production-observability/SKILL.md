@@ -15,7 +15,7 @@ description: "Use when planning or reviewing logs, traces, metrics, alerts or fa
 4. Record structured outcomes, service names, durations, failure categories, retry attempt and authorization decision. Strip secrets, bearer tokens, unredacted prompt bodies, full product image URLs, personal identifiers and full third-party responses.
 5. Pair logs with a small useful metric (failed requests, retry rate, elapsed time) and one alert that means an operator can act. Avoid noisy alerts based solely on health probes or a generic count of AI errors.
 6. **Verify telemetry itself** in nonproduction: reproduce one expected success and one denied/failure path; confirm logs identify the right request, contain no secrets and prove *readback* rather than an optimistic UI toast.
-7. For live incidents, use `root-cause-debugging` to reproduce and fix the current defect. This skill designs the future evidence and operational runbook.
+7. For live incidents, reproduce the current defect with existing Bun/Playwright tests and a focused hypothesis first; this skill designs future evidence and runbooks rather than substituting a new observability platform for a bug fix.
 
 **Example:** A product-image upload completes at Cloudinary but no corresponding approved asset appears in iPix. The trace points to the authorized DB-link failure; the dashboard reports a pending reconciliation instead of falsely counting a completed asset.
 
