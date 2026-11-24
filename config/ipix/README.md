@@ -25,8 +25,9 @@ Fintech example. Upstream examples remain unchanged for upgrades and comparison.
   conversations, Bot grants and channels before switching real workspaces.
   Do not reset volumes or change deployment/installation IDs.
 - The packaged server's bundled web assets are upstream; run the checkout's
-  web frontend (scripts/start.sh) for generated iPix branding. A custom release
-  image is a separate deployment task.
+  web frontend (scripts/start.sh) for local generated iPix branding, or build
+  the pinned hosted image with [Dockerfile.railway](../../Dockerfile.railway).
+  See [Railway deployment](../../docs/ipix/railway.md) for pilot setup and gates.
 - No real brand data, management MCP access or production writes are enabled
   by this package. The Mastra Planner is intentionally absent from the server's
   active agent roster and channel grants. The Compose server receives .env via

@@ -698,6 +698,8 @@ jobs:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run build
+      - name: Build and inspect iPix Railway image
+        run: bash scripts/check-ipix-railway-image.sh
 
   # The images the release publishes from this tree: the Bots and the harnesses. Nothing else here
   # builds them: they are built by `docker compose up --build` or pulled by a harness pick, so a
