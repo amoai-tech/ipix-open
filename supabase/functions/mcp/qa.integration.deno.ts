@@ -54,7 +54,11 @@ Deno.test({
             .split("\n")
             .find((line) => line.startsWith("data: "))
             ?.slice(6);
-      return { status: response.status, body: text ? JSON.parse(text) : null };
+      return {
+        status: response.status,
+        challenge: response.headers.get("WWW-Authenticate"),
+        body: text ? JSON.parse(text) : null,
+      };
     }
     const noAuth = await call("tools/list");
     assert(
@@ -81,7 +85,14 @@ Deno.test({
       assert(!error && data.session, "QA fixture sign-in failed");
       const token = data.session.access_token;
       const list = await call("tools/list", {}, token);
-      assert(list.status === 403, "First-party token must be denied");
+      assert(
+        list.status === 401 &&
+          list.challenge?.includes('error="invalid_token"') &&
+          list.challenge.includes(
+            `resource_metadata="${resource}/oauth-protected-resource"`,
+          ),
+        "First-party token must be denied with a reauthorization challenge",
+      );
       // Establish fixture truth separately via the user-scoped Data API.
       const { data: rows, error: readError } = await client
         .from("brands")
@@ -167,7 +178,8 @@ Deno.test({
         actor.token,
       );
       assert(
-        denied.status === 403,
+        denied.status === 401 &&
+          denied.challenge?.includes('error="invalid_token"'),
         "First-party tool execution must be denied",
       );
     }

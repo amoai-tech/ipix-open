@@ -7,11 +7,16 @@ import {
 import { pipeline } from "npm:@supabase/middleware@1";
 import {
   type SupabaseContext,
+  type OAuthProtectedResourceContribution,
   withOAuthProtectedResource,
   withSupabase,
 } from "npm:@supabase/server@1";
 
-import { permitsMcpToken } from "./oauth-policy.ts";
+import {
+  isValidMcpResource,
+  mcpTokenRejection,
+  mcpTokenStatus,
+} from "./oauth-policy.ts";
 import { registerTools, type ToolContext } from "./tools/index.ts";
 
 // An MCP server as a single Supabase Edge Function, composed as a pipeline:
@@ -66,7 +71,10 @@ function createServer(context: ToolContext): McpServer {
 
 async function handleMcp(
   request: Request,
-  ctx: SupabaseContext,
+  ctx: SupabaseContext & {
+    oauthProtectedResource: OAuthProtectedResourceContribution;
+  },
+  resource: string,
 ): Promise<Response> {
   const { userClaims, jwtClaims } = ctx;
   if (!userClaims || !jwtClaims) {
@@ -74,13 +82,16 @@ async function handleMcp(
   }
   // No first-party tokens or unapproved OAuth clients. Fail closed until the
   // issuer can mint a signed resource audience and deployment config is reviewed.
-  const resource = readTextEnv("MCP_RESOURCE_URL", "");
   const allowedClients = readTextEnv("MCP_ALLOWED_CLIENT_IDS", "")
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean);
-  if (!permitsMcpToken(jwtClaims, resource, allowedClients)) {
-    return new Response("Forbidden", { status: 403 });
+  const status = mcpTokenStatus(jwtClaims, resource, allowedClients);
+  if (status !== 200) {
+    return mcpTokenRejection(
+      status,
+      ctx.oauthProtectedResource.resourceMetadataUrl,
+    );
   }
   // The server and its tools are bound to this caller for exactly one request.
   const handler = createMcpHandler(
@@ -100,11 +111,18 @@ async function handleMcp(
 export function createRequestHandler(
   oauth?: Parameters<typeof withOAuthProtectedResource>[0],
 ) {
+  const resource = readTextEnv("MCP_RESOURCE_URL", "");
   return pipeline(
     [
-      withOAuthProtectedResource(oauth),
+      withOAuthProtectedResource({
+        ...oauth,
+        // Discovery and audience validation share one trusted configured URI.
+        resourceServer: isValidMcpResource(resource)
+          ? resource
+          : oauth?.resourceServer,
+      }),
       withSupabase({ auth: "user", cors: { headers: CORS_HEADERS } }),
     ],
-    (request, ctx) => handleMcp(request, ctx),
+    (request, ctx) => handleMcp(request, ctx, resource),
   );
 }

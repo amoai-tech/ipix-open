@@ -1,5 +1,9 @@
 import { expect, test } from "bun:test";
-import { permitsMcpToken } from "../supabase/functions/mcp/oauth-policy";
+import {
+  mcpTokenRejection,
+  mcpTokenStatus,
+  permitsMcpToken,
+} from "../supabase/functions/mcp/oauth-policy";
 
 const resource = "https://qa.example.test/mcp";
 const client = "qa-approved-client";
@@ -103,3 +107,55 @@ for (const [name, claims, target, clients, expected] of cases) {
     expect(permitsMcpToken(claims, target, clients)).toBe(expected),
   );
 }
+
+const metadata = `${resource}/oauth-protected-resource`;
+test.each([
+  { aud: "authenticated" },
+  { aud: "https://other.example.test/mcp" },
+  { aud: undefined },
+  { aud: [resource, 42] },
+])("wrong audience %j returns a discovery challenge", ({ aud }) => {
+  const status = mcpTokenStatus({ ...verified, aud }, resource, [client]);
+  expect(status).toBe(401);
+  const response = mcpTokenRejection(401, metadata);
+  expect(response.status).toBe(401);
+  expect(response.headers.get("WWW-Authenticate")).toBe(
+    `Bearer error="invalid_token", resource_metadata="${metadata}"`,
+  );
+});
+
+test("wrong audience takes precedence over an unapproved client", () => {
+  expect(
+    mcpTokenStatus(
+      { ...verified, aud: "authenticated", client_id: "other" },
+      resource,
+      [client],
+    ),
+  ).toBe(401);
+});
+test("resource-bound but unapproved client remains forbidden", () => {
+  expect(
+    mcpTokenStatus({ ...verified, client_id: "other" }, resource, [client]),
+  ).toBe(403);
+  expect(mcpTokenRejection(403, metadata).headers.has("WWW-Authenticate")).toBe(
+    false,
+  );
+});
+test("valid resource and approved client are accepted", () => {
+  expect(mcpTokenStatus(verified, resource, [client])).toBe(200);
+});
+test("missing configuration fails closed without an invalid token challenge", () => {
+  expect(mcpTokenStatus(verified, "", [client])).toBe(503);
+  expect(mcpTokenStatus(verified, resource, [])).toBe(503);
+  expect(mcpTokenRejection(503, metadata).headers.has("WWW-Authenticate")).toBe(
+    false,
+  );
+});
+test.each([`${resource}/`, `${resource}?`, `${resource}#`])(
+  "noncanonical configured resource %s fails closed",
+  (target) => {
+    expect(mcpTokenStatus({ ...verified, aud: target }, target, [client])).toBe(
+      503,
+    );
+  },
+);
