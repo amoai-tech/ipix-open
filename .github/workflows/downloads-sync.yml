@@ -10,7 +10,7 @@ name: Downloads sync
 # scripts/downloads-images.ts.
 #
 # Started by the signing run that makes a stable release Latest (scripts/release-make-latest.sh),
-# every six hours in case anything drifted or that start failed, and by hand. Each run compares
+# or by hand if anything drifted or that start failed. Each run compares
 # checksums and uploads only what differs, so a run with nothing new changes nothing.
 #
 # Last, on a run for the Latest release, it removes the installers of every older release from
@@ -32,8 +32,6 @@ on:
         type: boolean
         default: false
         required: false
-  schedule:
-    - cron: "17 */6 * * *"
 
 permissions: {}
 

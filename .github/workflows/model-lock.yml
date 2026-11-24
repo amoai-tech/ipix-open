@@ -8,7 +8,7 @@ name: Model lock
 # model the lock verifies no longer answers. See docs/releasing.md, "Model lock".
 #
 # Only for pull requests from this repository: a fork's pull request is never given the provider
-# keys, so it is skipped and the daily check covers it once it merges.
+# keys. Maintainers can explicitly probe one retained client using workflow_dispatch.
 on:
   pull_request:
     paths:
@@ -21,20 +21,26 @@ on:
       - "shared/model-lock.json"
       - "scripts/model-compat.ts"
       - ".github/workflows/model-lock.yml"
+  workflow_dispatch:
+    inputs:
+      harness:
+        description: Retained agent framework to probe
+        type: choice
+        options: [agent-langgraph-ts, agent-langgraph-agui, agent-mastra, agent-claude-sdk]
+        default: agent-langgraph-ts
+        required: true
 
 permissions: {}
 
 concurrency:
-  group: model-lock-${{ github.event.pull_request.number }}
+  group: model-lock-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   changed:
     name: Harnesses whose client changed
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    # The 16-core pool, not the shared standard one: a lock change starts a job per harness, and on
-    # the standard runners they queued behind every other workflow's jobs.
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
@@ -52,18 +58,25 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REQUESTED_HARNESS: ${{ inputs.harness }}
         run: |
           set -euo pipefail
-          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
           # The harnesses the check runs: the published ones, and every engine the lock names,
           # published yet or not, that has a row in shared/harnesses.json.
           checked=$(bun scripts/model-compat.ts harnesses)
-          # The check itself, or the lock, changed: every harness the lock names is checked.
-          if grep -qxE 'shared/model-lock.json|scripts/model-compat.ts|\.github/workflows/model-lock.yml' <<<"$changed"; then
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            harnesses=$(jq -ce --arg h "$REQUESTED_HARNESS" 'if index($h) then [$h] else error("unsupported or retired harness") end' <<<"$checked")
+            echo "harnesses=$harnesses" >> "$GITHUB_OUTPUT"
+            echo "Harnesses to check: $harnesses"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          # Compatibility implementation or lock edits recheck the lock; workflow-only edits do not.
+          if grep -qxE 'shared/model-lock.json|scripts/model-compat.ts' <<<"$changed"; then
             harnesses=$(jq -c --argjson checked "$checked" \
               '[.engines | keys[] | select(. as $h | $checked | index($h))]' shared/model-lock.json)
           else
-            harnesses=$(grep -oE '^agent-[a-z0-9-]+/' <<<"$changed" | tr -d / | sort -u \
+            harnesses=$({ grep -E '^agent-[a-z0-9-]+/(requirements\.txt|Dockerfile|package\.json|bun\.lock|package-lock\.json)$|^agent-langgraph-agui/src/chatgpt_models\.py$' <<<"$changed" || true; } | cut -d/ -f1 | sort -u \
               | jq -R . | jq -sc --argjson checked "$checked" \
                 'map(select(. as $h | $checked | index($h)))')
           fi
@@ -74,7 +87,7 @@ jobs:
     name: ${{ matrix.harness }}
     needs: changed
     if: needs.changed.outputs.harnesses != '[]'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: read

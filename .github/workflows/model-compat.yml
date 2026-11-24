@@ -16,11 +16,9 @@ name: Model compatibility
 # picker may offer for each harness. When a model newly answers or stops answering, the run opens
 # or updates one pull request that refreshes the lock. See docs/releasing.md, "Model lock".
 #
-# Runs only on a schedule and by hand, on main: never on a pull request, so no fork's code ever
+# Upstream-only manual check on main: never on a pull request, so no fork's code ever
 # runs with these keys.
 on:
-  schedule:
-    - cron: "41 6 * * *"
   workflow_dispatch:
     inputs:
       tags:
@@ -238,11 +236,11 @@ jobs:
           git switch -C "$BRANCH"
           git -c user.name="github-actions[bot]" \
             -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -m "Refresh the model lock from the daily model check" -- shared/model-lock.json
+            commit -m "Refresh the model lock from the manual model check" -- shared/model-lock.json
           git push --force "https://github.com/$GITHUB_REPOSITORY.git" "HEAD:refs/heads/$BRANCH"
           body="$RUNNER_TEMP/lock-pr.md"
           {
-            echo "The daily model check found models that started or stopped answering through the clients the harnesses ship. This refreshes \`shared/model-lock.json\`, the models the picker may offer for each harness."
+            echo "The manual model check found models that started or stopped answering through the clients the harnesses ship. This refreshes \`shared/model-lock.json\`, the models the picker may offer for each harness."
             echo
             cat "$RUNNER_TEMP/lock-changes.md"
             echo
