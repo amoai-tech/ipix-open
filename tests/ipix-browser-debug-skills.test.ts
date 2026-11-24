@@ -1,7 +1,7 @@
 /** Developer-skill metadata and fixture checks. Not live browser tests or skill invocation certification. */
 import { expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 const base = resolve(import.meta.dir, "..");
 const names = ["browser-journey-testing", "root-cause-debugging"] as const;
@@ -20,11 +20,13 @@ test("browser and debugging skills expose valid metadata and local links", () =>
     expect(metadata.name).toBe(name);
     expect((metadata.description ?? "").length).toBeGreaterThan(70);
     expect(contents.split("\n").length).toBeLessThan(500);
-    for (const [, url] of contents.matchAll(/\]\(([^)]+)\)/g)) {
-      if (/^(https?:|mailto:|#)/.test(url)) continue;
-      const local = url.split("#")[0];
-      if (local) expect(existsSync(resolve(dirname(path), local))).toBe(true);
-    }
+    const sourceRefs = [
+      ...contents.matchAll(
+        /https:\/\/github\.com\/[^\s/]+\/[^\s/]+\/blob\/([^\s/]+)\//g,
+      ),
+    ];
+    expect(sourceRefs.length).toBeGreaterThan(0);
+    for (const ref of sourceRefs) expect(ref[1]).toMatch(/^[a-f0-9]{40}$/);
   }
 });
 test("routing includes positive and negative prompts for both skills", () => {
@@ -64,6 +66,8 @@ test("real browser proof and debugging guardrails remain explicit", () => {
     "isolated browser",
   ])
     expect(browser).toContain(term);
-  for (const term of ["RED", "GREEN", "regression", "root cause"])
-    expect(debug.toLowerCase()).toContain(term.toLowerCase());
+  expect(debug).toContain("**Smallest RED signal:**");
+  expect(debug).toContain("**Prove GREEN:**");
+  expect(debug).toContain("regression");
+  expect(debug).toContain("root cause");
 });

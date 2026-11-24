@@ -1,6 +1,6 @@
 ---
 name: browser-journey-testing
-description: "Use to verify real ipix-open browser behavior with existing Playwright or Chrome DevTools: signed-in Bot conversations, editable proposals, screenshots, network failures, refresh and persistence. Not for docs-only or backend-only tasks."
+description: "Use whenever asked to verify or audit a real ipix-open browser user journey with Playwright or Chrome DevTools: signed-in Bot conversations, editable proposals, screenshots, network errors, refresh and persistence. If QA is unavailable, report NOT VERIFIED; not for docs-only or backend-only tasks."
 ---
 
 # Browser journey testing — prove what a user can do
