@@ -21,7 +21,13 @@ Fintech example. Upstream examples remain unchanged for upgrades and comparison.
   image is a separate deployment task.
 - No real brand data, management MCP access or production writes are enabled
   by this package. The optional native Planner endpoint is blank by default
-  until IPI-1492 and IPI-1493 prove authorization and migration.
+  until IPI-1492 and IPI-1493 prove authorization and migration. OpenBot omits
+  blank-endpoint remote agents and their channel grants. The intended remote
+  agent ID defaults to production-planner, not automatic discovery. Compose
+  deliberately does not forward the Planner environment variables yet; the
+  gated integration task must configure the approved server environment.
+- The model and built-in skill instructions retain the upstream supported
+  schema; verify the configured credential can access the model at runtime.
 - Rollback: restore the previous TENANT_PACKAGE_DIR and rebuild/restart the
   frontend and server. Use the verified backup for state restoration only if
   necessary; never delete existing volumes to switch packages.

@@ -4,7 +4,9 @@ This repository (`/home/sk/ipix-open/`) is the canonical new iPix application. L
 
 ## Permanent worktree location — mandatory
 
-**All development worktrees must reside under `/home/sk/ipix-open-wt/`. Never create iPix Open worktrees in `/tmp/`, `~/.worktrees/`, or the legacy iPix repository.**
+**On the iPix development workstation (user `sk`), all development worktrees must reside under `/home/sk/ipix-open-wt/`. Never create iPix Open development worktrees in `/tmp/`, `~/.worktrees/`, or the legacy iPix repository.**
+
+On other developer machines, use the dedicated sibling `ipix-open-wt/` directory beside the canonical checkout. CI-managed checkouts are not developer worktrees and are exempt from this local path requirement.
 
 - Main repository: `/home/sk/ipix-open/` (do not modify or reset its unrelated changes).
 - Development worktrees: `/home/sk/ipix-open-wt/ipi-NNNN-short-description/`.

@@ -37,11 +37,13 @@ agents:
       - whats-changed
       - who-owns-this
 
-  # The migrated Planner will be enabled only after IPI-1492/1493 prove identity and discovery.
+  # OpenBot omits remote agents with blank endpoints, including channel grants.
+  # Enable only after IPI-1492/1493 prove identity and discovery. Pin the intended agent;
+  # never rely on automatic discovery of an arbitrary agent on the remote server.
   - id: ipix-production-planner
     name: Production Planner
     title: Structured Fashion Planning
     role_description: Draft structured production plans using authorized iPix tools.
     type: remote-mastra
     endpoint: ${IPIX_MASTRA_URL:-}
-    remote_agent_id: ${IPIX_MASTRA_AGENT_ID:-}
+    remote_agent_id: ${IPIX_MASTRA_AGENT_ID:-production-planner}

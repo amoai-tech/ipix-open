@@ -48,7 +48,7 @@ describe("canonical iPix application package", () => {
     expect(remote[0]).toMatchObject({
       type: "remote-mastra",
       endpoint: `\${IPIX_MASTRA_URL:-}`,
-      remote_agent_id: `\${IPIX_MASTRA_AGENT_ID:-}`,
+      remote_agent_id: `\${IPIX_MASTRA_AGENT_ID:-production-planner}`,
     });
     for (const a of agents) {
       for (const slug of a.skills ?? []) expect(slugs.has(slug)).toBe(true);
