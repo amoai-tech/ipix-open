@@ -150,7 +150,7 @@ export const CI_RULES: Rule[] = [
   },
   {
     output: "startup",
-    checks: ["startup (macos-latest)", "startup (windows-latest)"],
+    checks: ["startup (ubuntu-latest)"],
     reads: (path) => isCode(path) || path === "app/tests/build-cache.test.ts",
   },
   {

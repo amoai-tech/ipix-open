@@ -471,7 +471,7 @@ describe("the Desktop workflow", () => {
 /** A GitHub Actions expression, written so the linter does not read it as a template literal. */
 const expression = (value: string) => ["$", "{{ ", value, " }}"].join("");
 
-/** The job names a workflow's runs report, with the two matrix forms ci.yml uses expanded. */
+/** The job names a workflow's runs report, with the default CI matrices expanded. */
 function jobNames(workflow: string): string[] {
   const parsed = Bun.YAML.parse(
     readFileSync(join(ROOT, ".github/workflows", workflow), "utf8"),
@@ -481,7 +481,7 @@ function jobNames(workflow: string): string[] {
       {
         name?: string;
         uses?: string;
-        strategy?: { matrix?: Record<string, unknown[]> };
+        strategy?: { matrix?: Record<string, unknown[] | string> };
       }
     >;
   };
@@ -494,11 +494,21 @@ function jobNames(workflow: string): string[] {
       names.push(name);
       continue;
     }
-    for (const value of values as unknown[]) {
+    // The startup matrix has an explicit opt-in branch and a default Linux branch.
+    // Expand the default here, because the cache rules certify ordinary PRs.
+    const defaultValues =
+      typeof values === "string"
+        ? JSON.parse(values.match(/\|\| '([^']+)'\) \}\}$/)?.[1] ?? "null")
+        : values;
+    expect(Array.isArray(defaultValues), name).toBe(true);
+    for (const value of defaultValues as unknown[]) {
       names.push(
         name
           .replace(expression(`matrix.${key}`), String(value))
-          .replace(expression("strategy.job-total"), String(values?.length)),
+          .replace(
+            expression("strategy.job-total"),
+            String(defaultValues.length),
+          ),
       );
     }
   }
@@ -509,6 +519,9 @@ describe("the rules name the jobs the workflows run", () => {
   test("ci.yml: every check a rule waits on is a job, and the shards are the matrix's", () => {
     const names = jobNames("ci.yml");
     for (const check of ALL_CI) expect(names).toContain(check);
+    expect(names.filter((name) => name.startsWith("startup ("))).toEqual([
+      "startup (ubuntu-latest)",
+    ]);
     expect(
       names.filter((name) => name.startsWith("tests (shard")),
     ).toHaveLength(SHARDS);

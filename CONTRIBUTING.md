@@ -10,7 +10,7 @@ what it changes and why.
 - **It runs on GitHub's standard hosted runners.** Each PR has its own CI queue; a newer push
   replaces that PR's stale run, not another contributor's run.
 - **Desktop validation is selective.** Native Linux and Docker regressions run for affected
-  desktop inputs. Full installer packaging and upgrade/signing validation are explicit
+  desktop inputs. Full installer packaging, historical upgrade tests and signing validation are explicit
   Actions runs or part of the release process. See [iPix CI policy](docs/ipix-ci.md).
 - **A new push starts a new run.** If you push again while a run is waiting, the newer commit is
   the one that gets checked.

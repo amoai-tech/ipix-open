@@ -84,7 +84,7 @@ test("the gate decides with release-ci-gate.ts, and re-runs the checks that read
 });
 
 test("the full checks run only when the gate says so", () => {
-  expect(job("checks").uses).toBe("$/.github/workflows/ci.yml");
+  expect(job("checks").uses).toBe("./.github/workflows/ci.yml");
   expect(needs("checks")).toEqual(["metadata", "verify", "gate"]);
   expect(condition("checks")).toBe(
     "needs.metadata.outputs.is_release == 'true' && needs.gate.outputs.full_checks == 'true'",
@@ -136,7 +136,7 @@ test("the release is created right after the images, and the signing runs are st
 
 test("a stable release builds no installers in the publish run; a candidate or beta builds its own beside the release", () => {
   const desktop = job("desktop");
-  expect(desktop.uses).toBe("$/.github/workflows/desktop-build.yml");
+  expect(desktop.uses).toBe("./.github/workflows/desktop-build.yml");
   expect(needs("desktop")).toEqual(["metadata", "verify", "images"]);
   expect(condition("desktop")).toBe(
     "!cancelled() && needs.metadata.outputs.prerelease == 'true' && needs.images.result == 'success'",

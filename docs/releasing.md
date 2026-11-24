@@ -1108,7 +1108,7 @@ A job added to `ci.yml` is covered by it without anybody updating a list.
 | `tests` | a decision made wrongly, in isolation |
 | `python harness (agent-langgraph-agui)` and one per harness | a provider-boundary regression in that Python Bot harness |
 | `compose config` | a Compose file an older Compose cannot read |
-| `startup (macos-latest)`, `startup (windows-latest)` | the app's serve-or-build cache deciding wrongly on macOS or Windows |
+| `startup (ubuntu-latest)` | the app's serve-or-build cache on Linux; Windows/macOS startup checks are opt-in through CI dispatch |
 | `build` | the app not compiling |
 | `component dockerfiles` | a Dockerfile a release would publish that no longer builds, or one the publish list has stopped covering |
 

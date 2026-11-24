@@ -9,8 +9,17 @@ name: Desktop upgrade
 # upgrade must move, what the old release wrote must read back from the new one, and each migration
 # must have run once.
 #
-# Manual pre-release/upgrade validation. Default: previous release; optional full window.
+# Previous-release validation for upgrade-related PRs; historical windows are manual.
 on:
+  pull_request:
+    paths:
+      - "desktop/src-tauri/src/upgrade*.rs"
+      - "desktop/src-tauri/src/deployment*.rs"
+      - "desktop/scripts/upgrade-legs.ts"
+      - "docker-compose.yml"
+      - "backend-images.env"
+      - "release-policy.json"
+      - ".github/workflows/desktop-upgrade.yml"
   workflow_dispatch:
     inputs:
       scope:
@@ -31,7 +40,7 @@ jobs:
   # Discover the full release window only when explicitly requested.
   legs:
     name: releases to upgrade from
-    if: inputs.scope == 'window'
+    if: github.event_name == 'workflow_dispatch' && inputs.scope == 'window'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -50,6 +59,10 @@ jobs:
           set -euo pipefail
           gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --exclude-drafts --json tagName,publishedAt,isPrerelease > "$RUNNER_TEMP/releases.json"
           releases="$(bun desktop/scripts/upgrade-legs.ts window --releases "$RUNNER_TEMP/releases.json")"
+          if [ "$releases" = '[]' ]; then
+            echo "::error::No published iPix release is available for a historical upgrade test."
+            exit 1
+          fi
           echo "Upgrading from (window): $releases"
           echo "releases=$releases" >> "$GITHUB_OUTPUT"
 
@@ -57,13 +70,13 @@ jobs:
     name: upgrade from ${{ matrix.release }}
     needs: legs
     # The previous-release case needs no release-window discovery.
-    if: ${{ !cancelled() && (inputs.scope == 'previous' || (needs.legs.result == 'success' && needs.legs.outputs.releases != '[]')) }}
+    if: ${{ !cancelled() && (github.event_name == 'pull_request' || inputs.scope == 'previous' || (needs.legs.result == 'success' && needs.legs.outputs.releases != '[]')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        release: ${{ fromJSON(inputs.scope == 'previous' && '["previous"]' || needs.legs.outputs.releases || '[]') }}
+        release: ${{ fromJSON((github.event_name == 'pull_request' || inputs.scope == 'previous') && '["previous"]' || needs.legs.outputs.releases || '[]') }}
     env:
       # The commit GitHub serves this tree's source archive for: the pull request's head, or main's.
       COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -89,7 +102,14 @@ jobs:
             gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --exclude-drafts --json tagName,publishedAt,isPrerelease > "$RUNNER_TEMP/releases.json"
             RELEASE="$(bun desktop/scripts/upgrade-legs.ts previous --releases "$RUNNER_TEMP/releases.json" | jq -r '.[0] // empty')"
           fi
-          echo "Upgrading from: ${RELEASE:-no earlier release, nothing to upgrade}"
+          if [ -z "$RELEASE" ]; then
+            if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+              echo "::error::No previous iPix release exists. An upgrade was not tested."
+              exit 1
+            fi
+            echo "::warning::No previous iPix release exists. No upgrade was tested; the initial migration requires separate evidence."
+          fi
+          echo "Upgrading from: ${RELEASE:-no published iPix baseline}"
           echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         if: steps.from.outputs.release != ''
