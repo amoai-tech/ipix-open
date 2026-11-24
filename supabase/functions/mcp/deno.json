@@ -4,6 +4,7 @@
     "strict": true
   },
   "tasks": {
-    "check": "deno check index.ts"
+    "check": "deno check --frozen index.ts qa.integration.deno.ts",
+    "test:qa": "deno test --frozen --allow-env --allow-net=127.0.0.1:56121 qa.integration.deno.ts"
   }
 }

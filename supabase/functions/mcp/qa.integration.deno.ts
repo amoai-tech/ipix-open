@@ -11,7 +11,7 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 Deno.test({
-  name: "MCP authenticates real QA users and denies cross-brand reads",
+  name: "MCP denies first-party QA tokens and checks resource-bound OAuth when supplied",
   ignore: Deno.env.get("IPIX_LOCAL_QA") !== "1",
   async fn() {
     assert(
@@ -21,6 +21,9 @@ Deno.test({
         password,
       "Refusing non-QA configuration",
     );
+    const expectedClient = Deno.env.get("IPIX_QA_OAUTH_CLIENT_ID");
+    Deno.env.set("MCP_RESOURCE_URL", resource);
+    Deno.env.set("MCP_ALLOWED_CLIENT_IDS", expectedClient ?? "");
     const handler = createRequestHandler({
       resourceServer: resource,
       authorizationServer: `${url}/auth/v1`,
@@ -78,6 +81,32 @@ Deno.test({
       assert(!error && data.session, "QA fixture sign-in failed");
       const token = data.session.access_token;
       const list = await call("tools/list", {}, token);
+      assert(list.status === 403, "First-party token must be denied");
+      // Establish fixture truth separately via the user-scoped Data API.
+      const { data: rows, error: readError } = await client
+        .from("brands")
+        .select("id")
+        .limit(3);
+      assert(!readError && rows?.length === 1, "Expected one QA fixture brand");
+      actors.push({ token, brand: rows[0].id });
+    }
+    const oauthToken = Deno.env.get("IPIX_QA_OAUTH_TOKEN");
+    if (oauthToken) {
+      assert(expectedClient, "Expected OAuth client required");
+      const who = await call(
+        "tools/call",
+        { name: "whoami", arguments: {} },
+        oauthToken,
+      );
+      assert(
+        who.status === 200,
+        "Resource-bound OAuth token required; issuer compatibility gate",
+      );
+      assert(
+        who.body?.result?.structuredContent?.client_id === expectedClient,
+        "OAuth client identity mismatch",
+      );
+      const list = await call("tools/list", {}, oauthToken);
       const names = list.body?.result?.tools
         ?.map((t: { name: string }) => t.name)
         .sort();
@@ -92,39 +121,13 @@ Deno.test({
               "list_shoots",
               "whoami",
             ]),
-        `Tool list failed HTTP ${list.status}`,
+        "Unexpected MCP tool list",
       );
-      const who = await call(
-        "tools/call",
-        { name: "whoami", arguments: {} },
-        token,
-      );
-      assert(
-        who.body?.result?.structuredContent?.id === data.user.id,
-        "Incorrect authenticated identity",
-      );
-      const brands = await call(
-        "tools/call",
-        {
-          name: "list_my_brands",
-          arguments: { limit: 3 },
-        },
-        token,
-      );
-      const rows = brands.body?.result?.structuredContent?.brands;
-      assert(
-        Array.isArray(rows) && rows.length === 1,
-        `Expected one authorized brand, HTTP ${brands.status}`,
-      );
-      actors.push({ token, brand: rows[0].id });
       for (const name of ["list_campaigns", "list_shoots", "list_assets"]) {
         const reply = await call(
           "tools/call",
-          {
-            name,
-            arguments: { limit: 3 },
-          },
-          token,
+          { name, arguments: { limit: 3 } },
+          oauthToken,
         );
         assert(
           reply.status === 200 &&
@@ -133,19 +136,6 @@ Deno.test({
           `${name} failed`,
         );
       }
-    }
-    const oauthToken = Deno.env.get("IPIX_QA_OAUTH_TOKEN");
-    if (oauthToken) {
-      const expectedClient = Deno.env.get("IPIX_QA_OAUTH_CLIENT_ID");
-      const who = await call(
-        "tools/call",
-        { name: "whoami", arguments: {} },
-        oauthToken,
-      );
-      assert(
-        who.body?.result?.structuredContent?.client_id === expectedClient,
-        "OAuth client identity mismatch",
-      );
       const own = await call(
         "tools/call",
         { name: "list_my_brands", arguments: { limit: 3 } },
@@ -167,30 +157,18 @@ Deno.test({
       );
     }
     assert(actors[0].brand !== actors[1].brand, "Distinct QA brands required");
-    for (let n = 0; n < actors.length; n++) {
-      const own = await call(
+    for (const actor of actors) {
+      const denied = await call(
         "tools/call",
         {
           name: "get_brand_profile",
-          arguments: { brand_id: actors[n].brand },
+          arguments: { brand_id: actor.brand },
         },
-        actors[n].token,
+        actor.token,
       );
       assert(
-        own.body?.result?.structuredContent?.brand?.id === actors[n].brand,
-        "Own brand rejected",
-      );
-      const foreign = await call(
-        "tools/call",
-        {
-          name: "get_brand_profile",
-          arguments: { brand_id: actors[1 - n].brand },
-        },
-        actors[n].token,
-      );
-      assert(
-        foreign.body?.result?.isError && !foreign.body.result.structuredContent,
-        "Foreign brand leaked",
+        denied.status === 403,
+        "First-party tool execution must be denied",
       );
     }
   },

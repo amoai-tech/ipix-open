@@ -115,7 +115,7 @@ try {
       "test",
       "--allow-env",
       "--allow-net=127.0.0.1:56121",
-      "qa.integration.test.ts",
+      "qa.integration.deno.ts",
     ],
     {
       cwd: "supabase/functions/mcp",

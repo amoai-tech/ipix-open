@@ -48,50 +48,59 @@ const useOAuthConsent = ({
         return;
       }
 
-      const supabase = createClient();
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      if (userError && !isAuthSessionMissingError(userError)) {
+        if (userError && !isAuthSessionMissingError(userError)) {
+          if (active) {
+            setError(userError.message);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (!user) {
+          const next = `${window.location.pathname}${window.location.search}`;
+          if (active) {
+            window.location.replace(
+              withNextParam(safeNextPath(signInPath, "/auth/login"), next),
+            );
+          }
+          return;
+        }
+
+        const { data, error } =
+          await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+        if (error) {
+          if (active) {
+            setError(error.message);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (!("authorization_id" in data)) {
+          if (active) {
+            window.location.replace(data.redirect_url);
+          }
+          return;
+        }
+
         if (active) {
-          setError(userError.message);
+          setDetails(data);
           setIsLoading(false);
         }
-        return;
-      }
-
-      if (!user) {
-        const next = `${window.location.pathname}${window.location.search}`;
+      } catch {
         if (active) {
-          window.location.replace(
-            withNextParam(safeNextPath(signInPath, "/auth/login"), next),
+          setError(
+            "Unable to load authorization. Check your connection and start again.",
           );
-        }
-        return;
-      }
-
-      const { data, error } =
-        await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
-      if (error) {
-        if (active) {
-          setError(error.message);
           setIsLoading(false);
         }
-        return;
-      }
-
-      if (!("authorization_id" in data)) {
-        if (active) {
-          window.location.replace(data.redirect_url);
-        }
-        return;
-      }
-
-      if (active) {
-        setDetails(data);
-        setIsLoading(false);
       }
     };
 
@@ -108,33 +117,40 @@ const useOAuthConsent = ({
       isDeciding.current = true;
       setDecision(action);
       setError(null);
-      const supabase = createClient();
-      const result =
-        action === "approve"
-          ? await supabase.auth.oauth.approveAuthorization(authorizationId, {
-              skipBrowserRedirect: true,
-            })
-          : await supabase.auth.oauth.denyAuthorization(authorizationId, {
-              skipBrowserRedirect: true,
-            });
+      let redirecting = false;
+      try {
+        const supabase = createClient();
+        const result =
+          action === "approve"
+            ? await supabase.auth.oauth.approveAuthorization(authorizationId, {
+                skipBrowserRedirect: true,
+              })
+            : await supabase.auth.oauth.denyAuthorization(authorizationId, {
+                skipBrowserRedirect: true,
+              });
 
-      if (result.error) {
-        setError(result.error.message);
-        setDecision(null);
-        isDeciding.current = false;
-        return;
-      }
-
-      if (!result.data?.redirect_url) {
+        if (result.error) {
+          setError(result.error.message);
+          return;
+        }
+        if (!result.data?.redirect_url) {
+          setError(
+            "The server did not return a redirect. Start again from your OAuth client.",
+          );
+          return;
+        }
+        window.location.assign(result.data.redirect_url);
+        redirecting = true;
+      } catch {
         setError(
-          "The server did not return a redirect. Start again from your OAuth client.",
+          "Unable to submit authorization. Check your connection and try again.",
         );
-        setDecision(null);
-        isDeciding.current = false;
-        return;
+      } finally {
+        if (!redirecting) {
+          setDecision(null);
+          isDeciding.current = false;
+        }
       }
-
-      window.location.assign(result.data.redirect_url);
     },
     [authorizationId],
   );

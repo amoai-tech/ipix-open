@@ -11,6 +11,7 @@ import {
   withSupabase,
 } from "npm:@supabase/server@1";
 
+import { permitsMcpToken } from "./oauth-policy.ts";
 import { registerTools, type ToolContext } from "./tools/index.ts";
 
 // An MCP server as a single Supabase Edge Function, composed as a pipeline:
@@ -70,6 +71,16 @@ async function handleMcp(
   const { userClaims, jwtClaims } = ctx;
   if (!userClaims || !jwtClaims) {
     return new Response("Unauthorized", { status: 401 });
+  }
+  // No first-party tokens or unapproved OAuth clients. Fail closed until the
+  // issuer can mint a signed resource audience and deployment config is reviewed.
+  const resource = readTextEnv("MCP_RESOURCE_URL", "");
+  const allowedClients = readTextEnv("MCP_ALLOWED_CLIENT_IDS", "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (!permitsMcpToken(jwtClaims, resource, allowedClients)) {
+    return new Response("Forbidden", { status: 403 });
   }
   // The server and its tools are bound to this caller for exactly one request.
   const handler = createMcpHandler(
