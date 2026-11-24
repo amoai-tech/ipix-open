@@ -16,6 +16,7 @@ description: Use for independent verification of OpenBot/iPix implementation cla
 ## Quick before changes
 - Re-open task, inspect clean default branch and active PRs, check whether the alleged gap already has a working fix.
 ## Full before Done
+Apply gates based on the behavior the task affects. For unaffected gates, record `N/A — reason`; they do not block Done. Changes touching consequential actions must verify approval, tenant isolation, exactly-once persistence and retry safety; these gates cannot be marked N/A. Check stop/stream recovery when the run lifecycle changes.
 1. Inspect exact diff against scope, architecture and acceptance criteria.
 2. Run the cheapest decisive proof: static inspection → focused Bun tests → typecheck → build/integration when appropriate.
 3. Verify real authenticated flow, errors and server response with test accounts.

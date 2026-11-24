@@ -18,6 +18,6 @@ description: Use to review OpenBot/iPix features and PRs for negative paths, com
 2. Check user flow: Bot receives request → authorized Planner draft → edit/reject/approve → read saved result.
 3. Check meaningful negative paths: unauthenticated, Org B, stale draft, model outage, stream interruption, cancellation, repeated approval, server 409 and recovery.
 4. Preserve existing OpenBot three skills, generated API behavior and general Bot flows.
-5. Report up to five evidence-backed merge risks and five high-value actor/action/expected-outcome tests, with PASS/FAIL/NOT VERIFIED.
+5. Report every evidence-backed merge risk and up to five high-value actor/action/expected-outcome tests, with PASS/FAIL/NOT VERIFIED.
 ## Example
 After switching organizations, a producer clicks Approve on an old proposal: server rechecks identity/tenant and blocks stale action.
