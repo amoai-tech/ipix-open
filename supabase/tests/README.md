@@ -102,3 +102,40 @@ is a static screening result, not proof of authorization bypass. No storage
 policies are present in this local QA schema. Test indirect helper enforcement,
 actual HTTP access, and hosted storage separately. Do not deploy the candidate
 RLS changes or grant additional privileges to work around missing issuer support.
+
+## Direct RPC and column boundary regression
+
+Run only on the existing disposable fixture database, from this worktree:
+
+```sh
+docker exec -i supabase_db_ipixqa356 psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 -P pager=off < supabase/tests/mcp-rpc-qa.sql
+```
+
+Both synthetic actors demonstrate the existing authorization gap: the callable
+`get_or_create_shortlist` function permits own-organization creation despite
+an MCP client claim, while foreign-organization creation is denied. Both can
+also read own-brand fields outside the MCP projection. No field values are
+printed. The rollback-only candidate guard denies the test MCP client before
+the existing RPC body and permits first-party creation for both actors. The
+test verifies exactly two synthetic first-party creations, then rolls back all
+data and the temporary function definition. It is not a production migration,
+a signed OAuth proof, or a claim that the other RPCs have been fixed.
+
+- ADAPT: https://supabase.com/docs/guides/auth/oauth-server/token-security —
+  use trusted client_id at authorization boundaries, preserving existing
+  organization checks; do not change other clients without an inventory.
+- REFERENCE ONLY: https://supabase.com/docs/guides/api/securing-your-api —
+  function execution needs its own authorization; a PostgREST pre-request
+  check is not a universal Storage/Realtime/other-service boundary.
+- REFERENCE ONLY: https://supabase.com/docs/guides/database/postgres/column-level-security —
+  RLS is a row boundary, not a projection boundary. A table-level SELECT grant
+  cannot be narrowed merely by revoking a single column grant.
+
+Next release design checkpoint: choose a reviewed least-privilege data access
+boundary that enforces the approved MCP client, permitted columns and
+operations without weakening the ordinary application. Evaluate restricted
+database privileges or narrow API views/functions using existing Supabase
+facilities before adding infrastructure. Prove all exposed RPCs, REST and
+GraphQL surfaces, and hosted Storage independently. Do not deploy a global
+revoke or the test-only function rewrite. Keep the existing resource-bound
+issuer requirement. The issuer and data authorization gates are independent.
