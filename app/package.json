@@ -23,6 +23,7 @@
     "@shadcn/react": "^0.3.0",
     "@streamdown/code": "2.0.0",
     "@streamdown/math": "1.0.3",
+    "@supabase/supabase-js": "2.112.4",
     "@tabler/icons-react": "^3.36.1",
     "@tanstack/react-form": "^1.33.5",
     "@tanstack/react-hotkeys": "^0.10.0",
