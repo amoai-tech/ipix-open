@@ -112,6 +112,24 @@ jobs:
       - name: Every recorded Desktop launch still starts this release's server
         run: bun scripts/check-launcher-inputs.ts
 
+  # The custom MCP function runs on Deno, not Bun. Keep its frozen SDK contract
+  # in the required verify gate even on changes that the Bun classifier skips.
+  ipix-mcp:
+    name: iPix MCP contract
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supabase/functions/mcp
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: 2.9.8
+      - run: deno task check
+      - run: deno task test:contract
+
   # The API contract. api/openapi.yaml is the single source of truth every client is generated from,
   # so four things are checked about it, each its own step so a red run names which:
   #
@@ -757,7 +775,7 @@ jobs:
     name: verify
     runs-on: ubuntu-latest
     if: always()
-    needs: [changes, static, api, mobile, app-browser, app-browser-webkit, app-browser-desktop, test, test-total, changed-tests, startup, langgraph-ts, python-harness, python-harness-compose, build, component-dockerfiles]
+    needs: [changes, static, ipix-mcp, api, mobile, app-browser, app-browser-webkit, app-browser-desktop, test, test-total, changed-tests, startup, langgraph-ts, python-harness, python-harness-compose, build, component-dockerfiles]
     steps:
       - name: Require every check
         env:
