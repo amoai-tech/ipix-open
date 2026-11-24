@@ -1,0 +1,27 @@
+---
+name: accessibility-audit
+description: "Use when auditing an existing ipix-open screen, CopilotKit-generated form/table/gallery or mobile UI for keyboard, screen reader, contrast and WCAG 2.2 AA problems. Verify in an actual browser; not for backend-only or rough wireframe tasks."
+---
+
+# Accessibility audit — usable fashion UI for everyone
+
+**Outcome:** A producer using keyboard or assistive technology can understand and operate the same essential workflow as a mouse user.
+
+## Audit only the actual changed surface
+
+1. Identify the rendered page/component and user task. For generated UI inspect `app/src/lib/copilot/a2ui.ts`, existing gallery/approval components and `openbot-screen-layout` where applicable. If the page does not yet exist, define an acceptance scenario; do not claim it was tested.
+2. Discover **installed** Playwright/a11y tools. Reuse existing browser harness, accessibility scripts or approved axe-core/pa11y versions. Do not execute arbitrary `npx @latest` installs or claim that automated audits prove complete WCAG conformance.
+3. Run an automated WCAG 2.2 AA scan on isolated QA where available, recording URL, SHA, viewport, ruleset, tool version and every evidenced violation. If tooling is not installed, document the precise gap and use verified manual browser checks without calling the automated gate a PASS.
+4. **Manually** test keyboard-only Tab/Shift+Tab, Enter/Space, Escape, visible focus, dialog focus trap/return, status announcements and any dynamically streaming tables/cards. Confirm labels, alt text for meaningful product images and readable error messages; test zoom and mobile layout.
+5. Fix the smallest true violation using existing accessible components and semantic controls. For AI-generated proposals keep proposed/saved state distinct and do not let a visual-only approval bypass exact server action approval.
+6. Re-run the failing case and a nearby regression. Record **PASS / FAIL / NOT VERIFIED / N/A-with-reason** plus screenshot/video/axe report where safe. Never upload private customer images or authenticated browser storage as CI artifacts.
+
+**Example:** A keyboard-only producer can reach every shot-list row, edit the selected crop, hear a streamed error, cancel the review dialog and return focus to the correct button; rejected changes save no shoot.
+
+## Source → target → verification
+
+**Reference — ADAPT:** https://github.com/addyosmani/agent-skills/blob/8c99fa36d90068c82d547f7c12a9d67a3e95f4ee/skills/accessibility-engineering/SKILL.md → automated and manual audit sequence, WCAG 2.2 AA evaluation and evidence. **Do not copy:** pinned CLI install commands that may conflict with this repository, unrelated web app assumptions or a claim of accessibility certification from automation alone. **Apply to:** this skill, then the actual iPix Open React component/browser test under review. **Verify:** failed issue reproduced, fixed, and keyboard/assistive-technology path retested.
+
+**Reference — REFERENCE ONLY:** https://www.w3.org/WAI/WCAG22/quickref/ → relevant WCAG 2.2 success criteria. **Do not copy:** large static checklists as a substitute for actual rendered-page testing. **Apply to:** specific detected control, heading, table or status-message defect. **Verify:** observed user interaction and exact criterion.
+
+**STOP:** No running UI, unsafe account, unavailable assistive-tech environment or inaccessible tool output → mark the affected gate **NOT VERIFIED**, not PASS.

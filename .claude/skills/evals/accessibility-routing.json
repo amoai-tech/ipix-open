@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "scope": "Developer-only routing fixtures; not an executed WCAG or model activation audit",
+  "cases": [
+    {
+      "id": "a11y-real-ui",
+      "skill": "accessibility-audit",
+      "shouldTrigger": true,
+      "prompt": "Audit the existing ipix-open fashion shoot-list editor for keyboard-only users, screen reader labels, focus return after a review dialog and WCAG 2.2 AA contrast. Use browser observations and evidence before calling it accessible.",
+      "expected": "Uses actual rendered UI in safe QA, runs current a11y tools if installed, tests keyboard and focus manually and distinguishes unverified gates from real passes."
+    },
+    {
+      "id": "a11y-backend-negative",
+      "skill": "accessibility-audit",
+      "shouldTrigger": false,
+      "prompt": "Fix a backend-only Bun JSON parser test for malformed records. This has no user interface, DOM, keyboard control or screen reader behavior.",
+      "expected": "Does not activate accessibility-audit for a backend-only unit test."
+    }
+  ]
+}

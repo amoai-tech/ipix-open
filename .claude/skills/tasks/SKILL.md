@@ -18,6 +18,12 @@ description: Use to plan OpenBot/iPix implementation work and Linear tickets wit
 3. For each step record: destination file → exact source URL/file → COPY/ADAPT/REFERENCE ONLY → use → do not copy → change → verify.
 4. State data ownership, authorization, human approval, failure/retry behavior, acceptance criteria, cheap tests and real user-journey evidence.
 5. Follow acceptance → implementation → focused test → independent review → exact-head CI → owner merge → post-merge readback. Update Linear to Done **only** after applicable evidence; one bounded concern per PR.
+## Release-impacting tasks: do not confuse merge with production
+
+For a changed live runtime/deployment configuration, require: the exact tested Git commit, intended deployment platform/project/team/domain, stage-and-test strategy, independent permission/tenant checks, release monitoring, rollback target, post-deploy readback and an owner-approved promotion decision. Check repository-native release workflows before inventing CLI deployment or release tags. For **documentation-only** changes mark deployment **N/A — no runtime change**, with the actual CI outcome distinguished from skip/queue.
+
+**Reference — ADAPT:** https://github.com/addyosmani/agent-skills/blob/8c99fa36d90068c82d547f7c12a9d67a3e95f4ee/skills/shipping-and-launch/SKILL.md → staged rollout, rollback and monitoring evidence. **Do not copy:** generic CI YAML, unapproved automation or vendor-specific commands. **Apply to:** `tasks` step 5 of an affected release task, using current OpenBot GitHub/Vercel/container wiring. **Verify:** exact deployed SHA, authorized QA outcome and rollback plan; no false success from a skipped release job.
+
 ## Example
 Task: 'The new `ipix-open` app gets an editable plan from the **migrated** iPix Planner without depending on the legacy service.' Gate: authorized QA stream, human approval, one durable save and cross-org denial.
 ## Verify

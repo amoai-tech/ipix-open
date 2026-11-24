@@ -27,3 +27,11 @@ For each fixture, in an isolated disposable checkout and with *read-only* tools:
 ## 3. Release gate
 
 Before calling the collection *behaviorally certified*: verify the critical skills (`mastra`, `copilotkit`, `ipix-supabase`, `task-verifier`, `qa-review`, `ponytail`) on correct **and wrong** requests, plus an OpenBot original-skill regression. A docs-only PR can pass its applicable static gates without claiming runtime skills or production integration have been validated.
+
+## 4. Better skill comparisons — when evaluating quality claims
+
+Use [pstack's blinded eval playbook](https://github.com/cursor/plugins/blob/005d8f6e8ec057b738adcd08a08b30db0478402d/pstack/skills/poteto-mode/playbooks/eval.md) as a **MODEL**, not a plugin or automatic background worker. **Do not copy:** its multi-model agent orchestration, Cursor-only CLI, cost assumptions, self-judging model scores or access to production data.
+
+**Apply to:** a separate approved evaluation run for a proposed/new `SKILL.md` and its previous version or skill-absent baseline. Use the same model and tool permissions in isolated working directories; present the candidate with an organic task, not an obvious "test this skill" prompt. Keep judge rubric private from the candidate, blind output identity, and grade source correctness, safety, testability and useful result on concrete observations.
+
+**Verify:** transcript shows the selected skills, correct answer, skipped/denied tool calls and negative near-miss. Record prompt, exact SHA, model/runtime, success criteria and costs only when measured. If the environment cannot invoke Claude or the result is not independently observed, mark **NOT VERIFIED**, not "100% accurate". Static fixture parsing does not prove activation.
