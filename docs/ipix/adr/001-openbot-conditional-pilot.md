@@ -11,7 +11,7 @@
 
 Build the new iPix application entirely in ipix-open. Copy and adapt proven iPix Mastra agents, tools, workflows, business logic, authorization, approval/save contracts and tests. **The legacy repository is source material, not a backend or runtime dependency.** No calls to the old Next.js application or its deployed APIs in the final architecture. Do not move the old UI wholesale or rebuild the packaged OpenBot server.
 
-**Faster/better approach:** migrate one vertical slice first: a synthetic fashion producer requests a six-outfit shoot, sees a structured shot list and budget, then reviews and saves exactly one approved plan. Preserve existing Supabase identity and business data, Cloudinary media, Mastra contracts and tenancy. Keep OpenBot's own database/Intelligence separate. The new app and its Mastra service may be separate containers but are owned by the same repository.
+**Faster/better approach:** migrate one vertical slice first: a synthetic fashion producer requests a six-outfit shoot, sees a structured shot list and budget, then reviews and saves exactly one approved plan in nonproduction. Before any Planner invocation, require a separate nonproduction Planner and isolated Mastra memory storage, or a verified control that prevents all Planner memory writes to production. Synthetic input alone is not a write barrier. Preserve existing Supabase identity and business data, Cloudinary media, Mastra contracts and tenancy. Keep OpenBot's own database/Intelligence separate. The new app and its Mastra service may be separate containers but are owned by the same repository.
 
 ```mermaid
 flowchart TD
@@ -32,12 +32,13 @@ The candidate destination is agent-mastra/src/mastra/ with migrated supporting d
 ## Migration sequence and implementation references
 
 ### Step 1 — Fashion configuration (IPI-1490 / IPI-1491)
-**Destination:** **config/ipix/** as the canonical iPix application package, plus existing Compose configuration; preserve upstream examples unchanged.
+**Destination:** `config/ipix/` as the canonical iPix application package, plus `docker-compose.yml`; preserve upstream examples unchanged.
 **Reference — ADAPT:** https://github.com/CopilotKit/OpenBot/tree/v1.1.2/examples/fintech → agents.yaml, skills.yaml, brand.yaml, channels.yaml, knowledge.yaml, model.yaml and catalog/.
-- Use the tenant-package pattern; adapt for fashion and mount into the running backend.
+- Use: the complete tenant-package pattern, with required `brand.yaml`, `agents.yaml`, `channels.yaml`, `model.yaml`, and `knowledge.yaml`; include `skills.yaml` and `catalog/` as needed.
+- Apply to: `config/ipix/` and `docker-compose.yml` in [IPI-1491 / PR #5](https://github.com/amoai-tech/ipix-open/pull/5). Bind-mount the checkout package read-only at `/app/config/ipix` in the published server container; set `TENANT_PACKAGE_DIR=../config/ipix` relative to `/app/server`. Preserve explicit customer overrides and the bundled personal package. Do not register the remote Planner or grant channel access before the later security gates.
 - Do not copy demo identities, credentials, broad grants or irrelevant coworkers.
-- Verify the package is loaded, UI chat/replay works, pinned image/config and restart are reproducible.
-- Checkpoint: stop if package cannot be loaded.
+- Verify all required files exist inside the container, the configured path resolves, and the server actually loads both fashion coworkers; verify UI chat/replay and restart on the pinned image.
+- **Checkpoint:** stop if the package cannot be loaded by the actual licensed server; file creation or Compose rendering alone is insufficient.
 
 ### Step 2 — Migrate identity and one authorized read (IPI-1492)
 **Destination:** iPix service within ipix-open; exact files after dependency inspection.
@@ -51,12 +52,14 @@ The candidate destination is agent-mastra/src/mastra/ with migrated supporting d
 **Reference — ADAPT:** https://github.com/CopilotKit/OpenBot/blob/v1.1.2/agent-mastra/src/mastra/index.ts → native Mastra HTTP server and @ag-ui/mastra. Use native adapter if verified user identity is supported; otherwise test a bounded authenticated MCP operation calling the migrated Planner. Do not copy demo managed token as user identity or old custom AG-UI/SSE example.
 **Reference — ADAPT:** https://github.com/amoai-tech/ipixai/tree/13bf2af385ebbe68a78c652daf5cffa3db95df24/src/mastra → agents/production-planner.ts, instructions, runtime.ts, planning/compose-shoot-plan/brand-intelligence tools, workflows, pg-store, thread-persistence, planner-tool-gate, run-control. Inspect dependency closure with Graphify and TypeScript. Copy pure logic; adapt runtime-specific auth and aliases; pin compatible packages and migrate corresponding tests. Legacy registry key default differs from agent ID production-planner; test discovery.
 - Do not copy just src/mastra without its @/lib dependencies, whole legacy UI, node_modules, secrets or obsolete adapters. Do not assume old SDK versions compatible with Bun.
+- Before any Planner discovery/stream or pilot invocation, use a nonproduction Planner with separate Mastra memory storage (preferred), or prove a control that blocks all production memory writes, including messages, working memory, thread creation and title generation. The pinned legacy `production-planner.ts` enables resource-scoped working memory and title generation. Verify the effective storage target and negative write test before enabling the agent; stop if isolation cannot be proven.
 - Verify targeted tests, typecheck/build, authenticated discovery/stream, correct CopilotKit render, scoped memory, Stop/resume and synthetic user journey.
 - Checkpoint: build and run from ipix-open alone, with no legacy checkout or running legacy service.
 
 ### Step 4 — Migrate business data and exact approval/save (IPI-1494 / IPI-1495)
 **Destination:** same new iPix service and OpenBot visual catalog.
 **Reference — ADAPT:** https://github.com/amoai-tech/ipixai/blob/13bf2af385ebbe68a78c652daf5cffa3db95df24/src/app/api/shoots/save/route.ts → strict approvalId, verified actor, saveApprovedShoot(), user-scoped Supabase. Port domain service and narrow supported endpoint; no runtime call to legacy route. Preserve exact artifact/revision/hash, role, ownership, idempotency and durable readback. Do not substitute generic Bot approval for domain approval or allow autonomous publishing, payments or deletes.
+- Carry forward Step 3’s pre-invocation memory gate. Use synthetic records and nonproduction business storage for the approved-save pilot; no production memory or domain writes.
 - Verify own-brand data, wrong-tenant/forged/stale approval denial, retries create exactly one canonical result, correct UI.
 - Checkpoint: one human-approved result and zero unauthorized effects.
 
@@ -92,6 +95,7 @@ flowchart TD
 | Code/dependency migration and independent build | Pending |
 | Per-user OAuth/remote Mastra identity and tenant isolation | Pending; hard stop |
 | OpenBot workspace isolation | Pending; hard stop |
+| Planner memory isolation or verified production write prevention | Pending; hard stop before invocation |
 | Human approval and idempotent save | Pending |
 | Commercial entitlement and production cutover | Not approved |
 
@@ -99,8 +103,8 @@ flowchart TD
 
 **Database gate:** preserve existing Supabase data and RLS. Coordinate IPI-1171 / IPI-1441 migration governance; no duplicate schema migration, parallel production writers or unauthorized data changes. Existing deployments remain untouched until a separately approved handover.
 
-**Rollback:** retain legacy source and any existing deployment as a temporary rollback safeguard, not a required backend. Stop isolated new services and revoke staged grants on failed gates.
+**Rollback:** retain legacy source and any existing deployment as a temporary rollback safeguard, not a required backend. Stop isolated new services and revoke staged grants on failed gates. Stopping OpenBot does not remove persisted Planner memory or restore production records already written. Prevent production writes before the pilot starts; never rely on deleting production records afterward. Retain isolated pilot state under its approved retention policy.
 
-**Worktree policy:** Every iPix Open development worktree belongs under `/home/sk/ipix-open-wt/`, not `/tmp/`, `~/.worktrees/` or the old iPix repository. Main repository remains `/home/sk/ipix-open/`; backups belong under `/home/sk/openbot-backups/`. The canonical `AGENTS.md` rule is introduced with the iPix default-app implementation task.
+**Worktree policy:** Use the dedicated sibling `ipix-open-wt/` worktree root, not `/tmp/`, `~/.worktrees/` or the legacy repository. Keep backups outside development worktrees. Follow the canonical `AGENTS.md` workstation-specific rules introduced by IPI-1491; this shared ADR does not override them.
 
-**Next:** Complete IPI-1491 from `/home/sk/ipix-open-wt/ipi-1491-default-app/`; then synthetic IPI-1492 before porting the Planner under IPI-1493. Update IPI-1390 and downstream references without claiming implementation is complete.
+**Next:** Certify IPI-1490, complete IPI-1491 in its `ipi-1491-default-app/` directory under the dedicated worktree root, then synthetic IPI-1492 before porting the Planner under IPI-1493. Update IPI-1390 and downstream references without claiming implementation is complete.
