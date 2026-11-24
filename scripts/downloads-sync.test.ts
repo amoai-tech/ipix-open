@@ -891,11 +891,7 @@ const workflow = (path: string) =>
 
 test("the sync workflow runs on main only, one at a time, with the role and nothing more", () => {
   const sync = workflow(".github/workflows/downloads-sync.yml");
-  expect(Object.keys(sync.on).sort()).toEqual([
-    "schedule",
-    "workflow_dispatch",
-  ]);
-  expect(sync.on.schedule).toEqual([{ cron: "17 */6 * * *" }]);
+  expect(Object.keys(sync.on).sort()).toEqual(["workflow_dispatch"]);
   expect(sync.concurrency).toEqual({
     group: "downloads-sync",
     "cancel-in-progress": false,

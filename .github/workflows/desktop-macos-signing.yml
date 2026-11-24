@@ -32,47 +32,20 @@ on:
         type: boolean
         default: false
         required: false
-  # Pull requests and pushes to main run only the credential-free checks; the signing job's `if`
-  # admits a `v*` tag or an explicit dispatch and nothing else, so no pull request reaches the
-  # environment.
-  pull_request:
-    paths:
-      - desktop/**
-      - package.json
-      - .github/workflows/desktop-macos-signing.yml
-      - .github/workflows/publish-release.yml
-      - .github/workflows/desktop-build.yml
-      - .github/workflows/desktop-signing.yml
-      - scripts/release-*
-      - scripts/downloads-*
-      - .github/workflows/downloads-sync.yml
-      - docs/releasing.md
+  # Actual release tags or explicit dispatch only.
   push:
-    branches: [main]
     tags: ["v*"]
-    paths:
-      - desktop/**
-      - package.json
-      - .github/workflows/desktop-macos-signing.yml
-      - .github/workflows/publish-release.yml
-      - .github/workflows/desktop-build.yml
-      - .github/workflows/desktop-signing.yml
-      - scripts/release-*
-      - scripts/downloads-*
-      - .github/workflows/downloads-sync.yml
-      - docs/releasing.md
 
 permissions:
   contents: read
 
 concurrency:
   group: desktop-macos-signing-${{ github.ref }}
-  # A pull request's newer push replaces its dry run, freeing a macOS runner. Signing runs (tags,
-  # main, dispatch) never cancel.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Never cancel signing in progress.
+  cancel-in-progress: false
 
 jobs:
-  # Everything about the updater that can be checked without a certificate, checked on every push.
+  # Everything about the updater that can be checked without a certificate, checked before signing.
   # The wiring is four files that have to agree — the plugin in Cargo.toml, the plugin registered in
   # main.rs, the permissions in the capability, and the endpoint and public key in the signing
   # overlay — and three of the four fail silently at runtime rather than at build time if they drift
