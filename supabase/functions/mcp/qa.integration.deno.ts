@@ -44,7 +44,11 @@ Deno.test({
       console.log("Negative-only QA mode: signed OAuth certification NOT RUN");
     }
     Deno.env.set("MCP_RESOURCE_URL", resource);
-    Deno.env.set("MCP_ALLOWED_CLIENT_IDS", expectedClient ?? "");
+    // Negative-only runs still need a valid configuration to test token denial.
+    Deno.env.set(
+      "MCP_ALLOWED_CLIENT_IDS",
+      expectedClient ?? "qa-negative-only-client",
+    );
     const handler = createRequestHandler({
       resourceServer: resource,
       authorizationServer: `${url}/auth/v1`,

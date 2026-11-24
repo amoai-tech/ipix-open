@@ -109,6 +109,9 @@ export function registerFashionTools(
     },
     async ({ limit }) => {
       if (!(await resolveMembership(context))) return denied();
+      // Legacy bookings are personal, not organization-owned: the QA schema has
+      // designer_id but no org_id, and SELECT RLS is auth.uid() = designer_id.
+      // This is not a canonical Planner shoot reader (IPI-1494).
       const { data, error } = await supabase
         .from("shoots")
         .select(

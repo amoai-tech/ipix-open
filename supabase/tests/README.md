@@ -77,3 +77,28 @@ users (a review population, not 39 proven vulnerabilities). No storage policy
 predicate directly references client_id. Review indirect helper checks and the
 actual API surface before release. Do not blanket-revoke existing app privileges
 without first-party regression evidence.
+
+## Review hardening
+
+- ADAPT: https://supabase.com/docs/reference/server/types-withsupabaseconfig —
+  pass the trusted issuer explicitly to the installed @supabase/server 1.9.0
+  verifier in handler.ts and advertise the same issuer in discovery. Use
+  MCP_AUTH_ISSUER or the trusted project URL, not request headers. The offline
+  oauth-challenge.deno.ts contract uses an ephemeral test-only ES256 key and
+  rejects missing/wrong issuers; no live issuer support is implied.
+- ADAPT: https://react.dev/learn/synchronizing-with-effects — invalidate stale
+  asynchronous completions in use-oauth-consent.ts. Each committed authorization
+  owns its pending decision; stale success/error/throw cannot redirect or unlock
+  a newer decision. Already submitted server decisions are not canceled.
+- REFERENCE ONLY: QA catalog inspection confirms legacy public.shoots has
+  designer_id and no org_id, with SELECT RLS auth.uid() = designer_id. Keep
+  the explicitly personal booking scope; canonical organization-owned Planner
+  reads remain a separate release gate.
+
+Callable RPC follow-up: the local catalog lists 39 authenticated-executable
+public security-definer functions, including approval, booking, Planner and
+asset mutation functions. Their source has no direct client_id reference; this
+is a static screening result, not proof of authorization bypass. No storage
+policies are present in this local QA schema. Test indirect helper enforcement,
+actual HTTP access, and hosted storage separately. Do not deploy the candidate
+RLS changes or grant additional privileges to work around missing issuer support.

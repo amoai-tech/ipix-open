@@ -1,6 +1,12 @@
 import type { OAuthAuthorizationDetails } from "@supabase/supabase-js";
 import { isAuthSessionMissingError } from "@supabase/supabase-js";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createClient } from "./client";
 import { safeNextPath } from "./safe-next-path";
 
@@ -29,7 +35,19 @@ const useOAuthConsent = ({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [decision, setDecision] = useState<OAuthConsentDecision | null>(null);
-  const isDeciding = useRef(false);
+  // Each committed authorization has its own decision owner. Invalidate before
+  // paint on change/unmount; a late completion cannot redirect or unlock a new owner.
+  const decisionOwner = useRef<{
+    id: typeof authorizationId;
+    busy: boolean;
+    signInPath: string;
+  } | null>(null);
+  useLayoutEffect(() => {
+    decisionOwner.current = { id: authorizationId, signInPath, busy: false };
+    return () => {
+      decisionOwner.current = null;
+    };
+  }, [authorizationId, signInPath]);
 
   useEffect(() => {
     let active = true;
@@ -112,9 +130,18 @@ const useOAuthConsent = ({
 
   const decide = useCallback(
     async (action: OAuthConsentDecision) => {
-      if (!authorizationId || isDeciding.current) return;
+      const owner = decisionOwner.current;
+      if (
+        !authorizationId ||
+        !owner ||
+        owner.id !== authorizationId ||
+        owner.signInPath !== signInPath ||
+        owner.busy ||
+        details?.authorization_id !== authorizationId
+      )
+        return;
 
-      isDeciding.current = true;
+      owner.busy = true;
       setDecision(action);
       setError(null);
       let redirecting = false;
@@ -129,6 +156,7 @@ const useOAuthConsent = ({
                 skipBrowserRedirect: true,
               });
 
+        if (decisionOwner.current !== owner) return;
         if (result.error) {
           setError(result.error.message);
           return;
@@ -142,17 +170,18 @@ const useOAuthConsent = ({
         window.location.assign(result.data.redirect_url);
         redirecting = true;
       } catch {
+        if (decisionOwner.current !== owner) return;
         setError(
           "Unable to submit authorization. Check your connection and try again.",
         );
       } finally {
-        if (!redirecting) {
+        if (!redirecting && decisionOwner.current === owner) {
           setDecision(null);
-          isDeciding.current = false;
+          owner.busy = false;
         }
       }
     },
-    [authorizationId],
+    [authorizationId, details, signInPath],
   );
 
   return {

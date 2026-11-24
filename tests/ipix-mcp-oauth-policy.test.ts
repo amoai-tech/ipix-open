@@ -147,6 +147,9 @@ test("valid resource and approved client are accepted", () => {
 test("missing configuration fails closed without an invalid token challenge", () => {
   expect(mcpTokenStatus(verified, "", [client])).toBe(503);
   expect(mcpTokenStatus(verified, resource, [])).toBe(503);
+  expect(
+    mcpTokenStatus({ ...verified, aud: "authenticated" }, resource, []),
+  ).toBe(503);
   expect(mcpTokenRejection(503, metadata).headers.has("WWW-Authenticate")).toBe(
     false,
   );

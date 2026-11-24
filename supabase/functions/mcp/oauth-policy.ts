@@ -33,7 +33,7 @@ export function mcpTokenStatus(
   resource: string,
   allowedClients: readonly string[],
 ): 200 | 401 | 403 | 503 {
-  if (!isValidMcpResource(resource)) return 503;
+  if (!isValidMcpResource(resource) || !allowedClients.length) return 503;
   const audiences = typeof claims.aud === "string" ? [claims.aud] : claims.aud;
   if (
     !Array.isArray(audiences) ||
@@ -41,7 +41,6 @@ export function mcpTokenStatus(
     !audiences.includes(resource)
   )
     return 401;
-  if (!allowedClients.length) return 503;
   if (
     claims.role !== "authenticated" ||
     claims.is_anonymous !== false ||

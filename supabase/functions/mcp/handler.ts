@@ -6,8 +6,8 @@ import {
 } from "npm:@modelcontextprotocol/server@2.0.0";
 import { pipeline } from "npm:@supabase/middleware@1";
 import {
-  type SupabaseContext,
   type OAuthProtectedResourceContribution,
+  type SupabaseContext,
   withOAuthProtectedResource,
   withSupabase,
 } from "npm:@supabase/server@1";
@@ -112,16 +112,31 @@ export function createRequestHandler(
   oauth?: Parameters<typeof withOAuthProtectedResource>[0],
 ) {
   const resource = readTextEnv("MCP_RESOURCE_URL", "");
+  // Trust deployment configuration, never request Host/forwarded headers or JWT claims.
+  // Public URL is needed for self-hosted stacks using an internal gateway URL.
+  const projectUrl = readTextEnv(
+    "SUPABASE_PUBLIC_URL",
+    readTextEnv("SUPABASE_URL", ""),
+  );
+  const issuer = readTextEnv(
+    "MCP_AUTH_ISSUER",
+    projectUrl ? `${projectUrl.replace(/\/+$/, "")}/auth/v1` : "",
+  );
+  if (!isValidMcpResource(issuer) || new URL(issuer).pathname !== "/auth/v1") {
+    return async (_request: Request) =>
+      new Response("Service unavailable", { status: 503 });
+  }
   return pipeline(
     [
       withOAuthProtectedResource({
         ...oauth,
+        authorizationServer: issuer,
         // Discovery and audience validation share one trusted configured URI.
         resourceServer: isValidMcpResource(resource)
           ? resource
           : oauth?.resourceServer,
       }),
-      withSupabase({ auth: "user", cors: { headers: CORS_HEADERS } }),
+      withSupabase({ auth: "user", issuer, cors: { headers: CORS_HEADERS } }),
     ],
     (request, ctx) => handleMcp(request, ctx, resource),
   );
