@@ -13,11 +13,11 @@ From the repo root:
 docker exec -i supabase_db_ipixqa356 psql -U postgres -d postgres -X -v ON_ERROR_STOP=1 -P pager=off < supabase/tests/mcp-rls-qa.sql
 ```
 
-Expect eight PASS notices and ROLLBACK. Verify fixture tables are empty and no
+Expect fourteen PASS notices and ROLLBACK. Verify fixture tables are empty and no
 policies named `ipix_qa_oauth_*` remain. Each actor gets a synthetic campaign,
 legacy shoot booking, and asset; existing brands establish the organization.
 Both actors exercise first-party, approved-client, unapproved-client, and
-wrong-resource claims. Tests compare expected visible rows, deny sampled writes
+wrong-resource claims, including string and array audiences and malformed arrays. Tests compare expected visible rows, deny sampled writes
 for OAuth clients and preserve an existing first-party asset update.
 
 ## Reference and boundaries
@@ -44,3 +44,36 @@ inventory all reachable tables, columns, functions, grants, and existing clients
 prove ordinary app behavior and deny unnecessary direct API access. RLS does not
 govern TRUNCATE. Never run this candidate as a production migration. Preserve
 exact resource validation in the MCP handler; do not bypass it to unblock QA.
+
+## Signed OAuth browser gate
+
+Run the existing local-only `scripts/ipix-qa-oauth-browser.mjs` from this
+worktree after starting the QA consent UI at http://127.0.0.1:4175 and supplying
+the approved fixture environment (SUPABASE_URL=http://127.0.0.1:56121,
+SUPABASE_PUBLISHABLE_KEY, IPIX_QA_FIXTURE_PASSWORD). Do not commit or print
+credentials. The script now requires separate browser contexts for both users,
+initial issuance and refresh, rejection of a changed resource, and signature-
+verified MCP calls with each initial/refreshed token. Negative-only Deno mode
+is explicitly not OAuth certification. In full mode, missing either actor's
+token or refresh token fails the test. The direct API and nonempty campaign,
+asset and shoot HTTP test gates still remain separate.
+
+- ADAPT: https://supabase.com/docs/guides/auth/oauth-server/oauth-flows —
+  public-client refresh request, without a resource parameter; test that the
+  original audience survives. Use the actual QA issuer, never a fabricated JWT.
+- REFERENCE ONLY: https://github.com/supabase/auth/pull/2894 —
+  proposed resource-indicator tests preserve the existing authenticated audience
+  and add the resource as an array member. Match that behavior in the disposable
+  SQL candidate; test wrong-resource and mixed-type arrays. The change is not a
+  published issuer release and must not be treated as production support.
+
+## QA direct access inventory (2026-11-24)
+
+Read-only catalog inspection: PostgREST exposes public and graphql_public.
+Public has 85 tables; storage has 12. No authenticated-readable table in those
+two schemas lacks RLS. Both readable public views use security_invoker=true.
+There are 39 public security-definer functions executable by authenticated
+users (a review population, not 39 proven vulnerabilities). No storage policy
+predicate directly references client_id. Review indirect helper checks and the
+actual API surface before release. Do not blanket-revoke existing app privileges
+without first-party regression evidence.

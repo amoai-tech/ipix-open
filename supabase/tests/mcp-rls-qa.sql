@@ -62,7 +62,10 @@ BEGIN
       'CREATE POLICY ipix_qa_oauth_select ON public.%I AS RESTRICTIVE FOR SELECT TO authenticated USING (
          (SELECT auth.jwt()->>''client_id'') IS NULL OR
          ((SELECT auth.jwt()->>''client_id'') = ''ipix-qa-policy-client'' AND
-          (SELECT auth.jwt()->>''aud'') = ''https://example.invalid/mcp''))', t);
+          ((SELECT auth.jwt()->>''aud'') = ''https://example.invalid/mcp'' OR
+           ((SELECT jsonb_typeof(auth.jwt()->''aud'')) = ''array'' AND
+            (SELECT auth.jwt()->''aud'') @> ''["https://example.invalid/mcp"]''::jsonb AND
+            NOT (SELECT jsonb_path_exists(auth.jwt()->''aud'', ''$[*] ? (@.type() != "string")''))))))', t);
     EXECUTE format(
       'CREATE POLICY ipix_qa_oauth_insert ON public.%I AS RESTRICTIVE FOR INSERT TO authenticated WITH CHECK ((SELECT auth.jwt()->>''client_id'') IS NULL)', t);
     EXECUTE format(
@@ -79,16 +82,20 @@ DO $$
 DECLARE f record; mode text; n integer; denied boolean;
 BEGIN
   FOR f IN SELECT * FROM ipix_mcp_qa LOOP
-    FOREACH mode IN ARRAY ARRAY['first-party','approved','unapproved','wrong-resource'] LOOP
+    FOREACH mode IN ARRAY ARRAY['first-party','approved','approved-array','unapproved','wrong-resource','wrong-resource-array','malformed-array'] LOOP
       PERFORM set_config('request.jwt.claims',
         (jsonb_build_object('sub',f.actor,'role','authenticated','aud',
-          CASE WHEN mode = 'wrong-resource' THEN 'https://example.invalid/other'
-               WHEN mode = 'first-party' THEN 'authenticated'
-               ELSE 'https://example.invalid/mcp' END)
+          CASE mode
+            WHEN 'wrong-resource' THEN to_jsonb('https://example.invalid/other'::text)
+            WHEN 'first-party' THEN to_jsonb('authenticated'::text)
+            WHEN 'approved-array' THEN '["authenticated","https://example.invalid/mcp"]'::jsonb
+            WHEN 'wrong-resource-array' THEN '["authenticated","https://example.invalid/other"]'::jsonb
+            WHEN 'malformed-array' THEN '["https://example.invalid/mcp",42]'::jsonb
+            ELSE to_jsonb('https://example.invalid/mcp'::text) END)
           || CASE WHEN mode = 'first-party' THEN '{}'::jsonb
                   ELSE jsonb_build_object('client_id',CASE WHEN mode = 'unapproved'
                     THEN 'ipix-qa-other-client' ELSE 'ipix-qa-policy-client' END) END)::text,true);
-      n := CASE WHEN mode IN ('first-party','approved') THEN 1 ELSE 0 END;
+      n := CASE WHEN mode IN ('first-party','approved','approved-array') THEN 1 ELSE 0 END;
       IF (SELECT count(*) FROM public.brands WHERE id IN (SELECT brand FROM ipix_mcp_qa)) <> n
         OR (SELECT count(*) FROM public.brands WHERE id = f.brand) <> n
         OR (SELECT count(*) FROM public.campaigns WHERE id IN (SELECT campaign FROM ipix_mcp_qa)) <> n
