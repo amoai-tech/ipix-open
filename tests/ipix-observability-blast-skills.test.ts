@@ -1,6 +1,6 @@
 /** Static developer-guidance tests, not production observability or live regression evidence. */
 import { expect, test } from "bun:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const base = resolve(import.meta.dir, "..");
@@ -58,6 +58,17 @@ test("guidance forbids raw secrets and requires observable runtime evidence", ()
     read(".claude/skills/evals/observability-blast-routing.json"),
   ) as { cases: { expected: string }[] };
   const sources = [obs, blast, ...fixture.cases.map((x) => x.expected)];
+  const installed = new Set(
+    readdirSync(join(base, ".claude/skills"), { withFileTypes: true })
+      .filter(
+        (entry) =>
+          entry.isDirectory() &&
+          existsSync(join(base, ".claude/skills", entry.name, "SKILL.md")),
+      )
+      .map((entry) => entry.name),
+  );
+  expect(installed.has("graphify")).toBe(true);
+  expect(installed.has("task-verifier")).toBe(true);
   for (const expected of fixture.cases.map((entry) => entry.expected)) {
     // A named fallback such as "Prefers root-cause-debugging" must be quoted
     // so the skill-existence check below cannot silently skip it.
@@ -65,16 +76,14 @@ test("guidance forbids raw secrets and requires observable runtime evidence", ()
       /\b(?:Prefers|Routes to)\s+[a-z][a-z0-9]*-[a-z0-9-]+/i,
     );
   }
+  expect(
+    [...blast.matchAll(/`([a-z][a-z0-9-]*)`/g)].map((m) => m[1]),
+  ).toContain("graphify");
   for (const source of sources) {
-    const siblingNames = [
-      ...source.matchAll(/`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`/g),
-    ]
+    const siblingNames = [...source.matchAll(/`([a-z][a-z0-9-]*)`/g)]
       .map((match) => match[1])
       .filter((name) => name !== "ipix-open");
-    for (const name of siblingNames)
-      expect(existsSync(join(base, ".claude/skills", name, "SKILL.md"))).toBe(
-        true,
-      );
+    for (const name of siblingNames) expect(installed.has(name)).toBe(true);
   }
   for (const t of ["secrets", "readback", "NOT VERIFIED", "existing"])
     expect(obs).toContain(t);
