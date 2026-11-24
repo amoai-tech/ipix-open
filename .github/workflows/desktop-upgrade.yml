@@ -108,7 +108,7 @@ jobs:
               # Explicit migration baseline from ADR 001; fail rather than report a false pass.
               gh release view "$RELEASE" --repo "$repository" --json isDraft,isPrerelease,assets | jq -e '(.isDraft | not) and (.isPrerelease | not) and any(.assets[]; .name == "container-images.json")' >/dev/null
               # The ADR's inspected source baseline; reject a moved tag.
-              baseline="$(gh api "repos/$repository/git/ref/tags/$RELEASE" --jq '.object.sha')"
+              baseline="$(gh api "repos/$repository/commits/$RELEASE" --jq '.sha')"
               test "$baseline" = "8826a0fe3827b80c519b6b8a274e74efbaef7868"
             fi
           fi

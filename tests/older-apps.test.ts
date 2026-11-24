@@ -390,8 +390,17 @@ test.skipIf(!compose)(
           },
         ]),
       );
+      // The iPix server now validates its selected package before starting. Keep the
+      // older-app overlay contract: the same pinned image, shell guard, and exact server exec.
+      const serverRuns = startedAs.server.runs;
+      expect(serverRuns.slice(0, 2)).toEqual(["/bin/sh", "-ec"]);
+      expect(serverRuns).toHaveLength(3);
+      expect(serverRuns[2]).toContain("exit 78");
+      expect(serverRuns[2]?.trimEnd().split("\n").at(-1)?.trim()).toBe(
+        "exec /app/bin/openbot server",
+      );
       expect(startedAs).toEqual({
-        server: { image: OPENBOT_IMAGE, runs: ["/app/bin/openbot", "server"] },
+        server: { image: OPENBOT_IMAGE, runs: serverRuns },
         "agent-computer": {
           image: OPENBOT_IMAGE,
           runs: ["/app/bin/openbot-computer"],
