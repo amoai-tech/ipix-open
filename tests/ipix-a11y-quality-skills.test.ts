@@ -82,6 +82,8 @@ test("skill comparison and a11y routing distinguish true evidence from claims", 
   expect(runner).toContain("if not success else False");
   expect(evals).toContain("--skill accessibility-audit --case-id a11y-real-ui");
   expect(evals).not.toContain("browser-journey-testing");
+  expect(evals).toContain("trap cleanup_baseline EXIT");
+  expect(evals).toContain("worktree remove");
   expect(runner).toContain("NOT VERIFIED");
   const cases = JSON.parse(
     read(".claude/skills/evals/accessibility-routing.json"),

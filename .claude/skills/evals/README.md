@@ -55,6 +55,16 @@ if test -e "$baseline"; then
   exit 1  # Exits only this subshell, never the user's interactive terminal
 fi
 git -C "$candidate" worktree add --detach "$baseline" HEAD
+# Always restore and detach this disposable worktree, even if Claude is unavailable.
+cleanup_baseline() {
+  if test -d "$baseline"; then
+    git -C "$baseline" restore .claude/skills/accessibility-audit/SKILL.md || true
+    git -C "$candidate" worktree remove "$baseline" || {
+      echo "Could not remove $baseline; inspect manually" >&2
+    }
+  fi
+}
+trap cleanup_baseline EXIT
 rm "$baseline/.claude/skills/accessibility-audit/SKILL.md"
 python3 "$candidate/.claude/skills/evals/run-routing-readonly.py" \
   --with-checkout "$candidate" --without-checkout "$baseline" \
@@ -62,8 +72,7 @@ python3 "$candidate/.claude/skills/evals/run-routing-readonly.py" \
   --skill accessibility-audit --case-id a11y-real-ui --dry-run
 # For a real comparison, remove --dry-run and add --model <exact-model-version>.
 # The optional --timeout flag defaults to 300 seconds per model call.
-git -C "$baseline" restore .claude/skills/accessibility-audit/SKILL.md
-git -C "$candidate" worktree remove "$baseline"
+# The EXIT trap cleans the baseline on PASS, FAIL, NOT VERIFIED or interruption.
 )
 ~~~
 
