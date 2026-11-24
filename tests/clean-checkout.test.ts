@@ -7,11 +7,11 @@ import { join } from "node:path";
 const root = join(import.meta.dir, "..");
 
 describe("a clone that has only run bun install", () => {
-  test("can read the example tenant package with nothing set", () => {
+  test("can read the default iPix tenant package with nothing set", () => {
     // `pretest` loads this package, so a name here with no fallback fails the suite before a single
     // test runs.
     const agents = readFileSync(
-      join(root, "examples/fintech/agents.yaml"),
+      join(root, "config/ipix/agents.yaml"),
       "utf8",
     );
     const referenced = [

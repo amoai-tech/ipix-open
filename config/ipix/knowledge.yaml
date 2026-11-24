@@ -1,0 +1,6 @@
+# Source hints only: these do not connect apps or grant access.
+sources:
+  - type: google-drive
+    roots: [Brand Guidelines, Creative Briefs, Production]
+  - type: microsoft-onedrive
+    roots: [Brand Guidelines, Campaigns]

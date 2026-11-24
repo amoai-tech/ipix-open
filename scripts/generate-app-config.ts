@@ -20,7 +20,7 @@ const tenantPackageDirectory = configuredTenantPackageDirectory
   ? isAbsolute(configuredTenantPackageDirectory)
     ? configuredTenantPackageDirectory
     : resolve(projectRoot, "server", configuredTenantPackageDirectory)
-  : resolve(projectRoot, "examples/fintech");
+  : resolve(projectRoot, "config/ipix");
 
 function expandEnvironment(value: string, filename: string): string {
   return value.replace(

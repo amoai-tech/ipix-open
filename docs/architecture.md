@@ -396,7 +396,7 @@ it, so there memory has no screens, routes, tools or sources. Everything below i
 
 ## Tenant package and knowledge
 
-`TENANT_PACKAGE_DIR` points at the tenant package. The default is `../examples/fintech`.
+`TENANT_PACKAGE_DIR` points at the tenant package. The iPix checkout default is `../config/ipix`; the upstream image retains its own default.
 
 Required package files:
 

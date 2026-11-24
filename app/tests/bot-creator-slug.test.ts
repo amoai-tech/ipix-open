@@ -19,7 +19,7 @@ import { BOT_CREATOR_SLUG } from "@/lib/agents/proposal";
  * along with whichever half of the coupling a later change moves.
  */
 
-const PACKAGE = join(import.meta.dir, "../../examples/fintech");
+const PACKAGE = join(import.meta.dir, "../../config/ipix");
 
 type SkillsFile = { skills: { slug: string; tools?: unknown }[] };
 type AgentsFile = { agents: { id: string; skills?: string[] }[] };
