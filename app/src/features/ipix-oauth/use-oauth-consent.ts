@@ -1,0 +1,204 @@
+import type { OAuthAuthorizationDetails } from "@supabase/supabase-js";
+import { isAuthSessionMissingError } from "@supabase/supabase-js";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createClient } from "./client";
+import { safeNextPath } from "./safe-next-path";
+
+export type OAuthConsentDecision = "approve" | "deny";
+
+export interface UseOAuthConsentOptions {
+  authorizationId?: string | null;
+  signInPath?: string;
+}
+
+const withNextParam = (path: string, next: string) => {
+  const url = new URL(path, window.location.origin);
+  const searchParams = new URLSearchParams(url.search);
+  searchParams.set("next", next);
+  url.search = searchParams.toString();
+  return `${url.pathname}${url.search}${url.hash}`;
+};
+
+const useOAuthConsent = ({
+  authorizationId,
+  signInPath = "/auth/login",
+}: UseOAuthConsentOptions) => {
+  const [details, setDetails] = useState<OAuthAuthorizationDetails | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [decision, setDecision] = useState<OAuthConsentDecision | null>(null);
+  // Each committed authorization has its own decision owner. Invalidate before
+  // paint on change/unmount; a late completion cannot redirect or unlock a new owner.
+  const decisionOwner = useRef<{
+    id: typeof authorizationId;
+    busy: boolean;
+    signInPath: string;
+  } | null>(null);
+  useLayoutEffect(() => {
+    decisionOwner.current = { id: authorizationId, signInPath, busy: false };
+    return () => {
+      decisionOwner.current = null;
+    };
+  }, [authorizationId, signInPath]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAuthorization = async () => {
+      setIsLoading(true);
+      setError(null);
+      setDetails(null);
+      setDecision(null);
+
+      if (!authorizationId) {
+        setError(
+          "This page needs an authorization_id. Start again from your OAuth client.",
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError && !isAuthSessionMissingError(userError)) {
+          if (active) {
+            setError(userError.message);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (!user) {
+          const next = `${window.location.pathname}${window.location.search}`;
+          if (active) {
+            window.location.replace(
+              withNextParam(safeNextPath(signInPath, "/auth/login"), next),
+            );
+          }
+          return;
+        }
+
+        const { data, error } =
+          await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
+        if (error) {
+          if (active) {
+            setError(error.message);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (!("authorization_id" in data)) {
+          if (active) {
+            window.location.replace(data.redirect_url);
+          }
+          return;
+        }
+
+        if (active) {
+          setDetails(data);
+          setIsLoading(false);
+        }
+      } catch {
+        if (active) {
+          setError(
+            "Unable to load authorization. Check your connection and start again.",
+          );
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadAuthorization();
+    return () => {
+      active = false;
+    };
+  }, [authorizationId, signInPath]);
+
+  const decide = useCallback(
+    async (action: OAuthConsentDecision) => {
+      const owner = decisionOwner.current;
+      if (
+        !authorizationId ||
+        !owner ||
+        owner.id !== authorizationId ||
+        owner.signInPath !== signInPath ||
+        owner.busy ||
+        details?.authorization_id !== authorizationId
+      )
+        return;
+
+      owner.busy = true;
+      setDecision(action);
+      setError(null);
+      let redirecting = false;
+      try {
+        const supabase = createClient();
+        const result =
+          action === "approve"
+            ? await supabase.auth.oauth.approveAuthorization(authorizationId, {
+                skipBrowserRedirect: true,
+              })
+            : await supabase.auth.oauth.denyAuthorization(authorizationId, {
+                skipBrowserRedirect: true,
+              });
+
+        if (decisionOwner.current !== owner) return;
+        if (result.error) {
+          setError(result.error.message);
+          return;
+        }
+        if (!result.data?.redirect_url) {
+          setError(
+            "The server did not return a redirect. Start again from your OAuth client.",
+          );
+          return;
+        }
+        window.location.assign(result.data.redirect_url);
+        redirecting = true;
+      } catch {
+        if (decisionOwner.current !== owner) return;
+        setError(
+          "Unable to submit authorization. Check your connection and try again.",
+        );
+      } finally {
+        if (!redirecting && decisionOwner.current === owner) {
+          setDecision(null);
+          owner.busy = false;
+        }
+      }
+    },
+    [authorizationId, details, signInPath],
+  );
+
+  return {
+    details,
+    email: details?.user.email ?? null,
+    error,
+    isLoading,
+    decision,
+    approve: () => decide("approve"),
+    deny: () => decide("deny"),
+  };
+};
+
+type UseOAuthConsentReturn = ReturnType<typeof useOAuthConsent>;
+
+export {
+  type OAuthAuthorizationDetails,
+  type UseOAuthConsentReturn,
+  useOAuthConsent,
+};

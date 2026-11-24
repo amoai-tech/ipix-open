@@ -1,0 +1,11 @@
+{
+  "nodeModulesDir": "none",
+  "compilerOptions": {
+    "strict": true
+  },
+  "tasks": {
+    "check": "deno check --frozen index.ts qa.integration.deno.ts oauth-challenge.deno.ts",
+    "test:contract": "deno test --frozen --allow-env oauth-challenge.deno.ts",
+    "test:qa": "deno test --frozen --allow-env --allow-net=127.0.0.1:56121 qa.integration.deno.ts"
+  }
+}
