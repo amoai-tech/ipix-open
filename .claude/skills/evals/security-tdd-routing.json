@@ -29,6 +29,20 @@
       "shouldTrigger": false,
       "prompt": "Correct a Markdown heading typo in the developer instructions. There is no runtime behavior change and no code implementation.",
       "expected": "Avoids a red-green-refactor runtime testing skill for a docs-only correction."
+    },
+    {
+      "id": "security-approval-revoked-retry",
+      "skill": "security-threat-modeling",
+      "shouldTrigger": true,
+      "prompt": "In iPix Open, review the security of a synthetic fashion Planner approval that was granted to Brand A, then the user lost access before an interrupted save was retried. Design a denied direct API test and canonical row-count proof without assuming the Planner is already deployed.",
+      "expected": "Requires reauthorization at execution/resume, stale approval denied after revocation, zero writes and independent readback; uses a still-authorized control for exactly-one durable save and marks missing QA routes NOT VERIFIED."
+    },
+    {
+      "id": "tdd-approval-revoked-retry",
+      "skill": "test-driven-development",
+      "shouldTrigger": true,
+      "prompt": "Implement a regression test for a delayed approved fashion shoot save when the actor loses Brand A membership just before the retry. Start RED, verify no save, then prove a separate authorized replay is exactly once; first inspect if the route actually exists.",
+      "expected": "Defines the failing public-interface contract, denies stale authorization after revocation, reads back zero writes and one authorized control, and avoids inventing a deployed Planner endpoint."
     }
   ]
 }

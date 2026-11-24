@@ -19,6 +19,18 @@ Use this **before** implementing or changing an input, permission, external serv
 
 **Example:** A malicious brand reference page tells the Planner to upload all workspace assets externally. The text is input data, not instructions; no outbound privileged tool is granted. A direct attempt with Brand B's asset ID receives denial and leaves no writes.
 
+## Adversarial acceptance case — approval revoked before retry
+
+**This is a required future QA test, not implemented runtime security proof.** Use only disposable QA identities and records after the Planner and canonical save endpoint actually exist.
+
+1. QA actor A initially belongs to Brand A and reviews/approves exact shoot revision R1. Record its authorized actor, brand, resource and revision. The server must not trust a client-provided brand/user/thread ID.
+2. Immediately **revoke A's Brand A permission** *before* processing the approved save or retrying an interrupted request. Continue the pending action using the original approval token/thread/request.
+3. Server **reauthorizes on execution/resume**, detects revoked access, rejects with an access-denied outcome, and records **zero new shoot records**. A stale client toast or previously approved plan must not override current membership.
+4. Repeat the exact request, reconnect and try a direct server API bypass: all must remain denied and preserve the same canonical row count. Verify no side effects in Cloudinary or other integrations.
+5. Control: an independent still-authorized reviewer approves the correct current revision once; the server writes **one** canonical record and a duplicate authorized retry remains exactly once.
+
+**Verify:** signed-in identities, permission-revocation evidence, denied response, current membership decision, authoritative before/after row count, audit log and no duplicated media action. No QA project or Planner route → **NOT VERIFIED** (not PASS). See `test-driven-development` for RED/GREEN tests on the actual API.
+
 ## Sources and destination
 
 **Reference — ADAPT:** https://github.com/addyosmani/agent-skills/blob/8c99fa36d90068c82d547f7c12a9d67a3e95f4ee/skills/security-and-hardening/SKILL.md → threat-model-first and trust-boundary analysis. **Do not copy:** broad generic checklists or vendor config changes as substitutes for actual access control. **Apply to:** this iPix developer skill, then the specific affected server/agent tool in its own task. **Verify:** denied direct request and trace of exact server authorization decision.

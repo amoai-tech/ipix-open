@@ -38,19 +38,38 @@ test("two positive and two negative evaluation cases are well formed", () => {
     }[];
   };
   expect(data.version).toBe(1);
-  expect(data.cases).toHaveLength(4);
+  expect(data.cases).toHaveLength(6);
   for (const name of names) {
     expect(
       data.cases
         .filter((x) => x.skill === name)
         .map((x) => x.shouldTrigger)
+        .filter((value, index, values) => values.indexOf(value) === index)
         .sort(),
     ).toEqual([false, true]);
   }
-  expect(new Set(data.cases.map((x) => x.id)).size).toBe(4);
+  expect(new Set(data.cases.map((x) => x.id)).size).toBe(6);
   for (const entry of data.cases) {
     expect(entry.prompt.length).toBeGreaterThan(70);
     expect(entry.expected.length).toBeGreaterThan(55);
+  }
+});
+test("revoked approval retry is required and routed to both appropriate skills", () => {
+  const security = read(".claude/skills/security-threat-modeling/SKILL.md");
+  const tdd = read(".claude/skills/test-driven-development/SKILL.md");
+  const fixtures = JSON.parse(
+    read(".claude/skills/evals/security-tdd-routing.json"),
+  ) as { cases: { id: string; skill: string; shouldTrigger: boolean }[] };
+  expect(security).toContain("revoke A's Brand A permission");
+  expect(security).toContain("zero new shoot records");
+  expect(security).toContain("reauthorizes on execution/resume");
+  expect(tdd).toContain("revocation between approval");
+  for (const id of [
+    "security-approval-revoked-retry",
+    "tdd-approval-revoked-retry",
+  ]) {
+    const fixture = fixtures.cases.find((x) => x.id === id);
+    expect(fixture?.shouldTrigger).toBe(true);
   }
 });
 test("cross-tenant authorization and red/green persistence proof are required", () => {

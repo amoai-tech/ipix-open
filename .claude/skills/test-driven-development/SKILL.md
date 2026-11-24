@@ -18,6 +18,10 @@ Define the **observable user/system outcome**, not a private helper's call seque
 
 **Example:** Double-clicking a synthetic shoot plan's Approve button creates two records. First write a failing integration assertion against the authorized save API, then fix the idempotency boundary and confirm **one** record after retry/restart.
 
+## Negative-path RED/GREEN case
+
+When a shoot approval save is in scope, test **revocation between approval and the server's execution/retry**: initial authorization valid → membership revoked → delayed request must be denied → no write. Keep a separate control for a still-authorized approval writing once after retry. Start with one failing public-interface assertion before implementing a minimal server-side reauthorization fix; the current migration may not yet expose this endpoint. See `security-threat-modeling` for the threat boundary.
+
 ## Sources and destination
 
 **Reference — ADAPT:** https://github.com/addyosmani/agent-skills/blob/8c99fa36d90068c82d547f7c12a9d67a3e95f4ee/skills/test-driven-development/SKILL.md → red/green/refactor and prove-it bug-fix discipline. **Do not copy:** Jest/Vitest or Node-specific test commands as defaults; use the installed Bun runner and do not make every docs edit run a browser. **Apply to:** this skill and the single existing iPix test suite relevant to the change. **Verify:** the same test was genuinely red before the fix and green afterward.
