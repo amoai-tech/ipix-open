@@ -122,9 +122,15 @@ test("release reuse runs missing macOS and Windows startup tests before publishi
     workflow("ci.yml").jobs.startup?.steps?.map((step) =>
       step.uses?.startsWith("actions/checkout@")
         ? { ...step, with: { ...step.with, ref: expression("github.sha") } }
-        : step,
+        : step.uses?.startsWith("oven-sh/setup-bun@")
+          ? { ...step, with: { ...step.with, "no-cache": true } }
+          : step,
     ),
   );
+  expect(
+    startup.steps?.find((step) => step.uses?.startsWith("oven-sh/setup-bun@"))
+      ?.with?.["no-cache"],
+  ).toBe(true);
   expect(startup).toMatchObject({
     strategy: { matrix: { os: ["macos-latest", "windows-latest"] } },
   });
