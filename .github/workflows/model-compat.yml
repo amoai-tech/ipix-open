@@ -16,11 +16,9 @@ name: Model compatibility
 # picker may offer for each harness. When a model newly answers or stops answering, the run opens
 # or updates one pull request that refreshes the lock. See docs/releasing.md, "Model lock".
 #
-# Runs only on a schedule and by hand, on main: never on a pull request, so no fork's code ever
+# Upstream-only manual check on main: never on a pull request, so no fork's code ever
 # runs with these keys.
 on:
-  schedule:
-    - cron: "41 6 * * *"
   workflow_dispatch:
     inputs:
       tags:

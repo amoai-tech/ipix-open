@@ -437,7 +437,7 @@ describe("a release PR", () => {
 describe("the Desktop workflow", () => {
   const ALL_DESKTOP = DESKTOP_RULES.flatMap((rule) => rule.checks);
 
-  test("a setup window test alone builds no app; a Rust change builds and lints", () => {
+  test("a setup window test alone needs no native run; Rust and catalogue changes run native checks", () => {
     const testOnly = decide(
       "desktop",
       PR,
@@ -456,6 +456,15 @@ describe("the Desktop workflow", () => {
       }),
     );
     expect(running(rust)).toEqual(["app", "core"]);
+    const catalogue = decide(
+      "desktop",
+      PR,
+      deps({
+        passed: { c2: ALL_DESKTOP },
+        changes: { c2: ["shared/harnesses.json"] },
+      }),
+    );
+    expect(running(catalogue)).toEqual(["app", "core"]);
   });
 });
 
@@ -544,24 +553,29 @@ describe("the rules name the jobs the workflows run", () => {
     }
   });
 
-  test("desktop.yml: core, each platform the shared build makes, and the live tests beside them", () => {
+  test("desktop.yml: native and live checks remain automatic; all-platform packaging is explicit", () => {
     const names = jobNames("desktop.yml");
     expect(names).toContain("core");
     const parsed = Bun.YAML.parse(
       readFileSync(join(ROOT, ".github/workflows/desktop.yml"), "utf8"),
     ) as {
       jobs: {
-        app: { with: { platforms: string } };
+        app: { if: string; with: { platforms: string } };
         live: { if: string };
       };
     };
     const platforms = JSON.parse(parsed.jobs.app.with.platforms) as string[];
     const live = names.filter((name) => name.startsWith("live ("));
     expect(live.length).toBeGreaterThan(0);
+    expect(platforms).toEqual(["macos", "windows", "linux"]);
     expect(DESKTOP_RULES.find((rule) => rule.output === "app")?.checks).toEqual(
-      [...platforms.map((platform) => `app / app (${platform})`), ...live],
+      live,
     );
-    // The live jobs stand on the app's gate, so a commit that skips the builds skips them too.
+    expect(parsed.jobs.app.if).toContain(
+      "github.event_name == 'workflow_dispatch'",
+    );
+    expect(parsed.jobs.app.if).toContain("inputs.package_installers == true");
+    // Live regressions remain automatic on affected desktop inputs.
     expect(parsed.jobs.live.if).toBe("needs.changes.outputs.app == 'true'");
   });
 

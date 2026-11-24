@@ -1,5 +1,5 @@
 /**
- * Contributor CI goes second (.github/workflows/contributor-ci.yml, every five minutes).
+ * Upstream contributor CI recovery (manual only in the iPix fork).
  *
  * CI from a pull request opened from a fork runs on the shared standard runners, one run at a time
  * (CI's and Desktop's `concurrency` put every fork run in one group). When CopilotKit's own runs (a

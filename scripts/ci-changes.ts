@@ -190,37 +190,30 @@ export const SUITE_RULE: Rule = {
   reads: isCode,
 };
 
+const desktopNativeInput = (path: string) =>
+  (!isDocs(path) &&
+    !isBunTest(path) &&
+    matcher(
+      "desktop/**",
+      "shared/harnesses.json",
+      "shared/marks/**",
+      "shared/recorder-extension.json",
+      "shared/fixtures/client-version/**",
+      "package.json",
+    )(path)) ||
+  desktopInputs(path);
+
 export const DESKTOP_RULES: Rule[] = [
   {
     output: "core",
     checks: ["core"],
-    reads: (path) =>
-      (!isDocs(path) && matcher("desktop/src-tauri/**")(path)) ||
-      desktopInputs(path),
+    reads: desktopNativeInput,
   },
   {
     output: "app",
-    // The builds, and the Docker regression tests desktop.yml runs beside them on the same gate.
-    checks: [
-      "app / app (macos)",
-      "app / app (windows)",
-      "app / app (linux)",
-      "live (images)",
-      "live (engines)",
-    ],
-    // desktop.yml's own path filter, less the docs and the tests the suite runs.
-    reads: (path) =>
-      (!isDocs(path) &&
-        !isBunTest(path) &&
-        matcher(
-          "desktop/**",
-          "shared/harnesses.json",
-          "shared/marks/**",
-          "shared/recorder-extension.json",
-          "shared/fixtures/client-version/**",
-          "package.json",
-        )(path)) ||
-      desktopInputs(path),
+    // Automatic Docker live regressions; packaged installers are explicitly dispatched.
+    checks: ["live (images)", "live (engines)"],
+    reads: desktopNativeInput,
   },
 ];
 

@@ -1167,8 +1167,8 @@ plan's backend a fixed Codex client version (`DEFAULT_CLIENT_VERSION` in
 with. A provider can refuse a new model to an older client while the picker keeps offering it:
 "Claude Code 2.1.259 does not support this model; version 2.1.290 or newer is required".
 
-**Model compatibility** (`.github/workflows/model-compat.yml`) checks for that daily, and by hand
-from the Actions tab. One job per harness in `.github/published-images.json` runs
+**Model compatibility** (`.github/workflows/model-compat.yml`) is retained as an upstream-only
+manual workflow. iPix uses the targeted Model lock PR check and local model probes instead. One job per harness in `.github/published-images.json` runs
 [`scripts/model-compat.ts`](../scripts/model-compat.ts), which:
 
 - lists each provider's models from the same source, with the same filter, as the picker (see
@@ -1182,11 +1182,10 @@ from the Actions tab. One job per harness in `.github/published-images.json` run
 
 It writes a pass, fail or skipped row per harness, image, provider and model, with the provider's
 own words, to the run's summary. On any failure the run fails and opens or updates one issue,
-**Model compatibility check failing**, and the first passing run closes it. It runs only on a
-schedule or by hand on `main`, never on a pull request.
+**Model compatibility check failing**, and the first passing run closes it. The broad upstream workflow runs only by hand on upstream `main`, never on a pull request.
 
 Each provider needs its key as a repository secret: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
-`GEMINI_API_KEY` (Google, also used for Antigravity) and `XAI_API_KEY`. A provider without one is
+`GEMINI_API_KEY` (Google) and `XAI_API_KEY`. A provider without one is
 reported as skipped, not failed, and the summary names the missing secrets. Unbiased AI is not
 checked: it is a gateway serving its own model, not a provider's listing.
 

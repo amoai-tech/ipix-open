@@ -18,11 +18,9 @@ automatically merges that filename into every Windows build.
 
 ## Request a signed validation build
 
-To sign a pull request's build, add the `windows-signing` label to a
-same-repository PR and approve its `windows-signing` environment deployment.
-The workflow checks out the exact PR head SHA from the labeling event. New
-pushes run the regression job; remove and reapply the label to sign the new SHA.
-Fork PRs cannot enter this signing job. There is no `pull_request_target` trigger.
+iPix does not sign automatically on pull requests or when a label is added.
+The signing workflow is dispatched by a maintainer or the release workflow.
+There is no `pull_request_target` trigger.
 
 To sign any ref, use **Actions → Desktop Windows signing → Run workflow**, select the
 ref to validate, and set `signing-mode` to `keyvault`. The default `none` runs

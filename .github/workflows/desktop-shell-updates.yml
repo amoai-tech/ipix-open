@@ -46,10 +46,10 @@ jobs:
             runner: macos-latest
             bundle: app
           - name: windows
-            runner: openbot-windows-16core
+            runner: windows-latest
             bundle: nsis
           - name: linux
-            runner: openbot-ubuntu-16core
+            runner: ubuntu-latest
             bundle: appimage
     env:
       OPENBOT_DISTRIBUTION_ID: ${{ vars.OPENBOT_DISTRIBUTION_ID }}

@@ -23,18 +23,12 @@ permissions:
 # `ci-refs/heads/main` with main's push runs: they queued behind whichever was in progress (the
 # five-minute wait before the checks of v0.3.1) and cancelled the one that was pending.
 #
-# Pull requests from forks share one group, so contributors' CI runs one at a time and cannot fill
-# the shared standard runners, and one contributor's push never cancels another's run. A fork run
-# GitHub drops from the group's one pending slot is re-run later by Contributor CI
-# (scripts/contributor-ci.ts), which also pauses fork runs while CopilotKit's are waiting.
+# Each PR has its own group; a new push cancels only that PR's stale checks.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && format('ci-{0}-forks', github.workflow) || format('ci-{0}-{1}', github.workflow, github.ref == 'refs/heads/main' && github.sha || github.ref) }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  group: ${{ format('ci-{0}-{1}', github.workflow, github.ref == 'refs/heads/main' && github.sha || github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Runners. Every job runs on the 16-core larger runners (org runner group openbot-larger, billed per
-# minute) for main, releases and pull requests from this repository: the standard runners are shared
-# across the organization, and a job used to wait longer for one than it took to run. Pull requests
-# from forks stay on the free standard runners.
+# Standard GitHub-hosted runners are available to the iPix fork.
 jobs:
   # What this push has to run (scripts/ci-changes.ts). On a pull request, a job whose inputs are
   # unchanged since a commit where it passed is skipped, and `verify` reads the skip as a pass: test
@@ -43,7 +37,7 @@ jobs:
   # of these checks and a pull request labelled `full-ci` run everything.
   changes:
     name: changes
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       # To read which jobs passed on the commits this one sits on.
@@ -86,7 +80,7 @@ jobs:
     name: format, lint, types
     needs: changes
     if: needs.changes.outputs.static == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -139,7 +133,7 @@ jobs:
     name: API spec
     needs: changes
     if: needs.changes.outputs.api == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     env:
       # Pinned with its checksum, from https://github.com/oasdiff/oasdiff/releases. The spec never
       # leaves the runner: the binary runs here, rather than the action, which uploads by default.
@@ -293,7 +287,7 @@ jobs:
     name: native types
     needs: changes
     if: needs.changes.outputs.mobile == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -332,7 +326,7 @@ jobs:
     name: app (real browser)
     needs: changes
     if: needs.changes.outputs.app_browser == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     env:
       PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
     steps:
@@ -386,7 +380,7 @@ jobs:
     name: app (real browser, WebKit)
     needs: changes
     if: needs.changes.outputs.app_browser == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     env:
       PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
     steps:
@@ -414,7 +408,7 @@ jobs:
     name: app (real browser, desktop setup window)
     needs: changes
     if: needs.changes.outputs.app_browser == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     env:
       PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
     steps:
@@ -448,7 +442,7 @@ jobs:
     name: tests (shard ${{ matrix.shard }} of ${{ strategy.job-total }})
     needs: changes
     if: needs.changes.outputs.suite == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     strategy:
       # Every shard runs to the end, so one red run names every failing test, not just the first
       # shard's.
@@ -493,7 +487,7 @@ jobs:
   # add up to less than the floor (scripts/test-floor.ts).
   test-total:
     name: tests
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     # Also when a shard failed, so this reports the failure rather than being skipped, which a
     # required check would read as a pass. Not when the suite was not needed: then no shard ran.
     if: always() && needs.changes.outputs.suite == 'true'
@@ -532,7 +526,7 @@ jobs:
     name: tests (changed files)
     needs: changes
     if: needs.changes.outputs.partial == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -564,7 +558,7 @@ jobs:
     name: startup (${{ matrix.os }})
     needs: changes
     if: needs.changes.outputs.startup == 'true'
-    runs-on: ${{ matrix.os == 'windows-latest' && (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'windows-latest' || 'openbot-windows-16core') || matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -590,7 +584,7 @@ jobs:
     name: typescript langgraph engine
     needs: changes
     if: needs.changes.outputs.langgraph_ts == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -616,7 +610,7 @@ jobs:
     name: python harness (${{ matrix.harness }})
     needs: changes
     if: needs.changes.outputs.python_harness == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -647,7 +641,7 @@ jobs:
     name: compose config
     needs: changes
     if: needs.changes.outputs.python_harness == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -684,7 +678,7 @@ jobs:
     name: build
     needs: changes
     if: needs.changes.outputs.build == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -708,7 +702,7 @@ jobs:
   # price of a dependency in the one workflow whose inputs are a security boundary.
   component-dockerfiles:
     name: component dockerfiles
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     # Minutes rather than seconds, so on a pull request it runs only when an admin adds the
     # `full-ci` label, the point at which the PR is actually a merge candidate. On main and through
     # the release's workflow_call it always runs. `verify` treats a skipped job as passing.
@@ -751,7 +745,7 @@ jobs:
   # a decision that failed skips nothing.
   verify:
     name: verify
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     if: always()
     needs: [changes, static, api, mobile, app-browser, app-browser-webkit, app-browser-desktop, test, test-total, changed-tests, startup, langgraph-ts, python-harness, python-harness-compose, build, component-dockerfiles]
     steps:
