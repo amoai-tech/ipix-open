@@ -78,6 +78,10 @@ test("skill comparison and a11y routing distinguish true evidence from claims", 
   expect(runner).toContain("--restricted");
   expect(runner).toContain("--strict-mcp-config");
   expect(runner).toContain("--model");
+  expect(runner).toContain("default=300");
+  expect(runner).toContain("if not success else False");
+  expect(evals).toContain("--skill accessibility-audit --case-id a11y-real-ui");
+  expect(evals).not.toContain("browser-journey-testing");
   expect(runner).toContain("NOT VERIFIED");
   const cases = JSON.parse(
     read(".claude/skills/evals/accessibility-routing.json"),

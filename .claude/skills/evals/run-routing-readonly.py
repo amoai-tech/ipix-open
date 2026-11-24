@@ -24,7 +24,7 @@ def git(path: pathlib.Path, *args: str) -> str:
     ).strip()
 
 
-def run_claude(directory: pathlib.Path, prompt: str, skill_name: str, model: str):
+def run_claude(directory: pathlib.Path, prompt: str, skill_name: str, model: str, timeout: int):
     command = [
         "claude", "--print", prompt, "--verbose", "--output-format", "stream-json",
         "--no-session-persistence", "--permission-mode", "plan",
@@ -37,7 +37,7 @@ def run_claude(directory: pathlib.Path, prompt: str, skill_name: str, model: str
     try:
         result = subprocess.run(
             command, cwd=directory, stdin=subprocess.DEVNULL, capture_output=True,
-            text=True, timeout=90, check=False,
+            text=True, timeout=timeout, check=False,
         )
     except subprocess.TimeoutExpired:
         return {"status": "NOT VERIFIED", "reason": "Claude invocation timed out"}
@@ -55,8 +55,8 @@ def run_claude(directory: pathlib.Path, prompt: str, skill_name: str, model: str
                     skills.append((item.get("input") or {}).get("skill"))
         if event.get("type") == "result":
             body = str(event.get("result") or "")
-            unavailable = bool(re.search(r"(usage limit|rate.?limit|quota|five.hour|5.hour)", body, re.I))
             success = not event.get("is_error", False)
+            unavailable = bool(re.search(r"(usage limit|rate.?limit|quota|five.hour|5.hour)", body, re.I)) if not success else False
     if unavailable or result.returncode != 0 or not success:
         return {
             "status": "NOT VERIFIED",
@@ -77,8 +77,11 @@ def main() -> int:
     p.add_argument("--case-id", required=True)
     p.add_argument("--skill", required=True)
     p.add_argument("--model", help="Exact Claude model version; required for real comparisons")
+    p.add_argument("--timeout", type=int, default=300, help="Timeout per Claude invocation in seconds (30–900)")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
+    if not 30 <= args.timeout <= 900:
+        p.error("--timeout must be between 30 and 900 seconds")
     with_dir = args.with_checkout.resolve()
     without_dir = args.without_checkout.resolve()
     relative_skill = f".claude/skills/{args.skill}/SKILL.md"
@@ -128,12 +131,12 @@ def main() -> int:
         " run scripts, send network requests or claim a browser/tenant test you did not execute."
         " Identify anything you could not verify."
     )
-    candidate = run_claude(with_dir, prompt, args.skill, args.model)
+    candidate = run_claude(with_dir, prompt, args.skill, args.model, args.timeout)
     if candidate["status"] != "OBSERVED":
         print(json.dumps({**info, "candidate": candidate, "baseline": "NOT RUN",
                           "routing_pass": "NOT VERIFIED"}))
         return 2
-    baseline = run_claude(without_dir, prompt, args.skill, args.model)
+    baseline = run_claude(without_dir, prompt, args.skill, args.model, args.timeout)
     passed = (
         candidate["status"] == "OBSERVED"
         and baseline["status"] == "OBSERVED"
