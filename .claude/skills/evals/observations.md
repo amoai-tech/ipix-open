@@ -1,6 +1,6 @@
 # Limited live skill-selection observations — 2026-11-23
 
-**Environment:** isolated `/home/sk/ipix-open-wt/ipi-1498-skills-review` worktree, base `04da42c6` plus the proposed uncommitted skill updates; Claude Code 2.1.331, `claude --print --verbose --output-format stream-json --no-session-persistence`. Read-only execution; edit, shell and network tools explicitly disallowed. Temporary event logs were kept outside Git and are not part of the PR.
+**Environment:** disposable project worktree, base `04da42c6` plus proposed **uncommitted** skill updates (**pre-commit smoke, not exact-head proof**); Claude Code 2.1.331, `claude --print --verbose --output-format stream-json --no-session-persistence`. Read-only execution; edit, shell and network tools explicitly disallowed. Temporary event logs were kept outside Git and are not part of the PR.
 
 | Scenario | Actual observed invocation | Outcome | Classification |
 | --- | --- | --- | --- |

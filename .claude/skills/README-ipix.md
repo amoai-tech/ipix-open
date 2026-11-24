@@ -9,7 +9,7 @@ These are **developer-time Claude Code instructions**, not runtime Bot tools, de
 | Responsibility | Target owner / guard |
 | --- | --- |
 | Browser, conversation, UI, developer skills | Existing OpenBot React/Vite + CopilotKit v2 entry points in `ipix-open` |
-| Bundled agent harness and migrated Production Planner | `ipix-open` Mastra service(s); check compatibility before porting, no duplicate framework by default |
+| Bundled generic Mastra harness and migrated Production Planner | Both stay in `ipix-open`; **dedicated Planner service preferred** to isolate tenant tools/credentials from shared `agent-mastra/` (reconcile PR #3 candidate first) |
 | Workspace conversations and infrastructure | OpenBot Postgres/Intelligence, **separate** from iPix business data |
 | Brands, shoots, assets, approvals, roles | Supabase Auth/Postgres with server authorization and RLS |
 | Images and transformations | Cloudinary; authorized iPix metadata and brand links live in Supabase |

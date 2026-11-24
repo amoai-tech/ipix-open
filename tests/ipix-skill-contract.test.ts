@@ -86,14 +86,15 @@ test("shared guides and evaluation docs have no broken local links", () => {
 test("shared ownership contract explicitly distinguishes proposal and implementation", () => {
   const guide = read(".claude/skills/README-ipix.md");
   expect(guide).toContain("standalone iPix application");
-  expect(guide).toContain("unmerged");
+  expect(guide).toContain("recheck its current state");
   expect(guide).toContain("migration source");
   expect(guide).toContain("Mastra memory/workflow storage");
   expect(guide).toContain("idempotent");
   const mastra = read(".claude/skills/mastra/SKILL.md");
   expect(mastra).toContain("agent-mastra/src/mastra/index.ts");
   expect(mastra).toContain("server/src/copilot.ts");
-  expect(mastra).toContain("absent from this checkout");
+  expect(mastra).toContain("verify against the shipped interface");
+  expect(mastra).toContain("isolated iPix Planner service");
   expect(mastra).toContain("nonproduction Supabase");
   const copilot = read(".claude/skills/copilotkit/SKILL.md");
   expect(copilot).toContain("@copilotkit/react-core/v2");

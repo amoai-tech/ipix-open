@@ -11,14 +11,14 @@ description: "Use when migrating or reviewing the iPix fashion Production Planne
 
 ## First inspect the native harness
 
-- `agent-mastra/src/mastra/index.ts` — the **existing bundled Mastra example**, plain Mastra server. It documents the `@ag-ui/mastra` bridge; it does **not** mount a generic AG-UI route.
+- `agent-mastra/src/mastra/index.ts` — the **shared generic Mastra Bot harness**, not an iPix Planner implementation. It registers one `openbot` agent and accepts a managed server token. Reuse its plain-Mastra/`@ag-ui/mastra` patterns, **not** its process-wide credentials or tool grants.
 - `shared/harnesses.ts` → `reachedThroughMastra()` — current native framework detection and remote agent discovery rules.
 - `server/src/copilot.ts` is referenced in the harness comment, but the packaged server source is **absent from this checkout**. Do not invent its auth/transport behavior; verify against the shipped interface or runtime.
 
 ## Migration procedure
 
 1. Inspect the legacy Planner dependency closure, current installed `@mastra/core` and Bun compatibility. **COPY+CLEAN** pure planning logic; **ADAPT** auth, imports, storage, workflow persistence and platform-specific code; **DROP** obsolete Next.js routes and duplicate transports.
-2. Evaluate `agent-mastra/src/mastra/` as the first destination. If its installed dependencies/packaged runtime cannot host the migrated Planner, document the conflict and use one separately deployed iPix service **inside the same repository**, not a legacy-repo network dependency.
+2. **Default to an isolated iPix Planner service within this same `ipix-open` repository**; keep the generic `agent-mastra/` harness unchanged and treat it as a **REFERENCE ONLY** pattern. PR #3 lists that harness as a candidate; this source inspection shows it is shared, so reconcile that candidate with IPI-1493 before implementation. Reuse a process only if its per-Bot identity, tool grants, secrets, memory and agent selection are independently proven isolated. Never depend on a deployed legacy-repo service.
 3. Default-deny tools. Start with planning and authorized reads; do not expose computer/shell, broad MCP, publish/pay/delete, or writes on model request.
 4. Verify **per-user** Supabase identity and current membership at the trusted server. Never treat OpenBot session, model text, browser orgId, or shared agent token as business authorization.
 5. Before any test run, prove a nonproduction Supabase target **and isolated Mastra memory**; synthetic requests can still create threads/working-memory rows. Stop if the storage boundary is uncertain.
