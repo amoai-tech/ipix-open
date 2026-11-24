@@ -5,7 +5,7 @@
 ## Reuse real existing OpenBot code
 
 - `app/tests/connection-lost-conversation.test.tsx` exercises the actual `ChannelChat` UI, line/connection banner and recovery behavior; it mocks the HTTP server at the API boundary. The fixture returns an actual 502 `OpenBot could not be reached.`.
-- `app/tests/connection-lost-conversation-route.test.tsx` exercises the existing `/_app/channel/$channelId` route, including the empty/error state while the server is unreachable. It also mocks HTTP.
+- `app/tests/connection-lost-conversation-route.test.tsx` exercises the existing `app/src/routes/_authed/_app/channel/$channelId.tsx` route, including the empty/error state while the server is unreachable. It also mocks HTTP.
 - `app/tests/channel-history-refresh.test.tsx` exercises the CopilotKit SSE connection, thread history and refresh/recovery of stored messages. It mocks the server boundary, not a live database.
 
 **Local regression:** After checking installed scripts and dependencies, run these focused files from a properly installed checkout, then report actual results. Passing these files is useful **simulated** regression proof, not evidence of an authenticated multi-server rollout.

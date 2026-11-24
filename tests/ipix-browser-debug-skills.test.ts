@@ -65,6 +65,7 @@ test("interrupted conversation QA recipe points to actual OpenBot tests and inde
     "app/tests/connection-lost-conversation.test.tsx",
     "app/tests/connection-lost-conversation-route.test.tsx",
     "app/tests/channel-history-refresh.test.tsx",
+    "app/src/routes/_authed/_app/channel/$channelId.tsx",
   ]) {
     expect(scenario).toContain(file);
     expect(existsSync(join(base, file))).toBe(true);
