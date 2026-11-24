@@ -35,3 +35,29 @@ Use [pstack's blinded eval playbook](https://github.com/cursor/plugins/blob/005d
 **Apply to:** a separate approved evaluation run for a proposed/new `SKILL.md` and its previous version or skill-absent baseline. Use the same model and tool permissions in isolated working directories; present the candidate with an organic task, not an obvious "test this skill" prompt. Keep judge rubric private from the candidate, blind output identity, and grade source correctness, safety, testability and useful result on concrete observations.
 
 **Verify:** transcript shows the selected skills, correct answer, skipped/denied tool calls and negative near-miss. Record prompt, exact SHA, model/runtime, success criteria and costs only when measured. If the environment cannot invoke Claude or the result is not independently observed, mark **NOT VERIFIED**, not "100% accurate". Static fixture parsing does not prove activation.
+
+
+## 5. Execute one safe with/without-skill routing comparison
+
+**Reference — ADAPT:** https://github.com/anthropics/claude-plugins-official/blob/main/plugins/skill-creator/skills/skill-creator/SKILL.md → compare a real skill-enabled response to an independently prepared baseline. **Do not copy:** provider-specific background eval workers, unrestricted tools, private data or self-certified scores. **Apply to:** `run-routing-readonly.py` and one selected local fixture. **Verify:** actual observed `Skill` tool invocation in the candidate and no such invocation in baseline, with explicit quota/error handling.
+
+The opt-in `run-routing-readonly.py` performs **one candidate and one baseline call** on the same prompt. Its output is metadata only and says nothing about response quality or whether the application works. It uses restricted mode, no MCP servers, permits only `Read`, `Glob`, `Grep` and `Skill` tools, forbids writes, commands and web tools, and does not save prompts, answers, tokens or session files. No API key or customer data belongs in the fixtures.
+
+Prepare a separate disposable worktree from the **exact candidate SHA**, with no development secrets, and delete *only* the selected SKILL.md inside the disposable worktree. For example, for PR #10:
+
+~~~sh
+candidate=/home/sk/ipix-open-wt/ipi-1499-browser-debug
+baseline=/tmp/ipix-skill-baseline-1499
+git -C "$candidate" worktree add --detach "$baseline" HEAD
+rm "$baseline/.claude/skills/browser-journey-testing/SKILL.md"
+python3 /home/sk/ipix-open-wt/ipi-1502-a11y-quality/.claude/skills/evals/run-routing-readonly.py \
+  --with-checkout "$candidate" --without-checkout "$baseline" \
+  --fixture-file "$candidate/.claude/skills/evals/browser-debug-routing.json" \
+  --skill browser-journey-testing --case-id browser-real-journey --dry-run
+# For a real comparison, remove --dry-run and add --model <exact-model-version>.
+# A real run makes two Claude calls, subject to account limits.
+git -C "$baseline" restore .claude/skills/browser-journey-testing/SKILL.md
+git -C "$candidate" worktree remove "$baseline"
+~~~
+
+Run one realistic positive and one close negative case for each new skill. **STOP and report NOT VERIFIED** on rate limits, no access, different SHAs, unsafe directories or unobserved tool events. Baseline/candidate must use the same model and permissions; score answer quality manually on correctness, security and source accuracy rather than treating a tool invocation as sufficient.

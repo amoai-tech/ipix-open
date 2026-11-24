@@ -6,11 +6,11 @@
       "id": "a11y-real-ui",
       "skill": "accessibility-audit",
       "shouldTrigger": true,
-      "prompt": "Audit the existing ipix-open fashion shoot-list editor for keyboard-only users, screen reader labels, focus return after a review dialog and WCAG 2.2 AA contrast. Use browser observations and evidence before calling it accessible.",
-      "expected": "Uses actual rendered UI in safe QA, runs current a11y tools if installed, tests keyboard and focus manually and distinguishes unverified gates from real passes."
+      "prompt": "Audit the existing OpenBot Bot Setup screen (`app/src/components/bot-profile/setup.tsx`) and Agent URL edit dialog for keyboard focus, accessible labels, error announcements, Escape, and dialog focus return; confirm the real component and existing `app/tests/bot-setup-agent-url.test.tsx` before attempting isolated browser checks.",
+      "expected": "Finds the actual Bot Setup/Agent URL dialog and test, defines browser keyboard and WCAG checks, reports actual observations without editing during an audit-only request, and marks unavailable browser/assistive-technology evidence NOT VERIFIED."
     },
     {
-      "id": "a11y-backend-negative",
+      "id": "a11y-wireframe-negative",
       "skill": "accessibility-audit",
       "shouldTrigger": false,
       "prompt": "Create a rough ASCII wireframe for a future responsive fashion shot-list screen. No rendered page exists yet; this is a design sketch, not an accessibility audit.",

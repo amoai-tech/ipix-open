@@ -1,6 +1,6 @@
 /** Developer-skill documentation contract only; no app WCAG certification or live release tests. */
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
@@ -30,6 +30,23 @@ test("accessibility skill uses valid scoped metadata, references and audit limit
   ])
     expect(skill).toContain(word);
 });
+test("accessibility positive fixture uses an existing tested Bot Setup dialog", () => {
+  const skill = read(".claude/skills/accessibility-audit/SKILL.md");
+  const fixture = JSON.parse(
+    read(".claude/skills/evals/accessibility-routing.json"),
+  ) as { cases: { id: string; prompt: string; expected: string }[] };
+  const positive = fixture.cases.find((x) => x.id === "a11y-real-ui");
+  for (const file of [
+    "app/src/components/bot-profile/setup.tsx",
+    "app/tests/bot-setup-agent-url.test.tsx",
+  ]) {
+    expect(existsSync(join(root, file))).toBe(true);
+    expect(skill).toContain(file);
+    expect(positive?.prompt).toContain(file);
+  }
+  expect(skill).toContain("Only when a fix was explicitly requested");
+  expect(positive?.expected).toContain("NOT VERIFIED");
+});
 test("existing QA, task and verifier invariants survive improvements", () => {
   const qa = read(".claude/skills/qa-review/SKILL.md");
   const tasks = read(".claude/skills/tasks/SKILL.md");
@@ -53,6 +70,15 @@ test("skill comparison and a11y routing distinguish true evidence from claims", 
     "NOT VERIFIED",
   ])
     expect(evals).toContain(value);
+  expect(evals).toContain("run-routing-readonly.py");
+  const runner = read(".claude/skills/evals/run-routing-readonly.py");
+  expect(runner).toContain("--without-checkout");
+  expect(runner).toContain("--dry-run");
+  expect(runner).toContain("--no-session-persistence");
+  expect(runner).toContain("--restricted");
+  expect(runner).toContain("--strict-mcp-config");
+  expect(runner).toContain("--model");
+  expect(runner).toContain("NOT VERIFIED");
   const cases = JSON.parse(
     read(".claude/skills/evals/accessibility-routing.json"),
   ) as {
