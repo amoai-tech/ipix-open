@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "scope": "Developer-time routing fixtures, not executed activation results",
+  "cases": [
+    {
+      "id": "security-threat-ai",
+      "skill": "security-threat-modeling",
+      "shouldTrigger": true,
+      "prompt": "Before building the new fashion Planner tool in ipix-open, map how malicious retrieved web text could request a cross-brand Cloudinary download, then propose server authorization and synthetic tenant denial tests.",
+      "expected": "Maps each trust boundary, refuses model/website text as authority, verifies server membership and tool grants, and defines a direct tenant-denial regression."
+    },
+    {
+      "id": "security-rls-negative",
+      "skill": "security-threat-modeling",
+      "shouldTrigger": false,
+      "prompt": "Explain the syntax of one existing Supabase RLS SELECT policy without changing an application endpoint, agent permission, trust boundary or authorization behavior.",
+      "expected": "Uses the narrower ipix-supabase guidance, without invoking a full cross-stack threat model."
+    },
+    {
+      "id": "tdd-approval",
+      "skill": "test-driven-development",
+      "shouldTrigger": true,
+      "prompt": "Fix duplicate fashion shoot records after an operator clicks Approve twice. Start with a failing public-interface test, show RED and GREEN, then verify reject creates zero and duplicate approve creates one record.",
+      "expected": "Uses a real reproducible RED condition, minimal server-authorized change, GREEN proof, and idempotent readback rather than only mocked call counts."
+    },
+    {
+      "id": "tdd-docs-negative",
+      "skill": "test-driven-development",
+      "shouldTrigger": false,
+      "prompt": "Correct a Markdown heading typo in the developer instructions. There is no runtime behavior change and no code implementation.",
+      "expected": "Avoids a red-green-refactor runtime testing skill for a docs-only correction."
+    }
+  ]
+}
