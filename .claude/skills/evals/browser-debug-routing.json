@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "scope": "Developer skills only; prompts are fixtures, not executed Claude activation proof",
+  "cases": [
+    {
+      "id": "browser-real-journey",
+      "skill": "browser-journey-testing",
+      "shouldTrigger": true,
+      "prompt": "Using a disposable nonproduction QA tenant and isolated browser profile in ipix-open, verify the real signed-in Bot conversation: send a message, observe streaming, refresh and prove the conversation is restored, recording browser network and console evidence.",
+      "expected": "Inspects the existing browser test harness, refuses shared staging, requires an isolated nonproduction QA actor, verifies UI/network/reload behavior and marks unavailable runtime proof NOT VERIFIED. For interruption and refresh, consults references/connection-recovery-qa.md and distinguishes mocked tests from live QA readback."
+    },
+    {
+      "id": "browser-backend-negative",
+      "skill": "browser-journey-testing",
+      "shouldTrigger": false,
+      "prompt": "Read the code and fix a spelling mistake in a backend-only TypeScript comment; no browser or client application behavior changes.",
+      "expected": "Avoids activating browser journey testing for a backend documentation-only correction."
+    },
+    {
+      "id": "debug-stream-failure",
+      "skill": "root-cause-debugging",
+      "shouldTrigger": true,
+      "prompt": "In ipix-open, the Bot stream sometimes stops after the first tool result. Reproduce with the smallest existing test, isolate the root cause, make a minimal fix and prove retry does not create two saved shoots.",
+      "expected": "Finds a reproducible RED test, traces installed source, runs the corrected GREEN test and checks idempotent persistence without claiming unrun integrations."
+    },
+    {
+      "id": "debug-ideation-negative",
+      "skill": "root-cause-debugging",
+      "shouldTrigger": false,
+      "prompt": "Brainstorm three campaign slogans for a sustainable clothing brand; there is no bug, failing test or implementation change.",
+      "expected": "Does not activate root-cause debugging for open-ended creative ideation."
+    }
+  ]
+}
