@@ -23,13 +23,10 @@ permissions:
 # `ci-refs/heads/main` with main's push runs: they queued behind whichever was in progress (the
 # five-minute wait before the checks of v0.3.1) and cancelled the one that was pending.
 #
-# Pull requests from forks share one group, so contributors' CI runs one at a time and cannot fill
-# the shared standard runners, and one contributor's push never cancels another's run. A fork run
-# GitHub drops from the group's one pending slot is re-run later by Contributor CI
-# (scripts/contributor-ci.ts), which also pauses fork runs while CopilotKit's are waiting.
+# Each PR has its own group; a new push cancels only that PR's stale checks.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && format('ci-{0}-forks', github.workflow) || format('ci-{0}-{1}', github.workflow, github.ref == 'refs/heads/main' && github.sha || github.ref) }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  group: ${{ format('ci-{0}-{1}', github.workflow, github.ref == 'refs/heads/main' && github.sha || github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # iPix uses standard GitHub-hosted runners. Upstream's organization-specific
 # larger runners are not available in this distribution. Keep all existing checks.
@@ -460,7 +457,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.3
-      - uses: ./.github/actions/test-shard
+      - uses: $/.github/actions/test-shard
         with:
           shard: ${{ matrix.shard }}/${{ strategy.job-total }}
       - run: bun install --frozen-lockfile
