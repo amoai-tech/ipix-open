@@ -29,9 +29,11 @@
 
 ## 3. User Journey & Architecture
 
-**User journey:** N/A — no affected user journey. [When relevant, replace with actual user → action → result and embed a task-specific Mermaid diagram here.]
+**User journey:** N/A — no affected user journey.
+<!-- When relevant, replace with actual user → action → result and embed a task-specific Mermaid diagram here. -->
 
-**Architecture / data flow:** N/A — no affected system flow. [When relevant, show the real app → server → Bot → database journey with Mermaid. Include failure and retry paths when useful.]
+**Architecture / data flow:** N/A — no affected system flow.
+<!-- When relevant, show the real app → server → Bot → database journey with Mermaid. Include failure and retry paths when useful. -->
 
 <!-- Embed real Mermaid code blocks directly in the PR description for meaningful user journeys or architecture changes. Never leave placeholder diagrams visible or treat diagrams as test evidence. -->
 
