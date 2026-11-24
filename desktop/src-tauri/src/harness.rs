@@ -880,11 +880,16 @@ mod tests {
     }
 
     /// Health checks stay on their readiness path, but the Bot is registered at the harness's real
-    /// run route. Agno and LlamaIndex do not serve AG-UI runs from the server root.
+    /// run route. The retained local harnesses use an empty run path, not /health.
     #[test]
     fn picked_harnesses_keep_run_routes_separate_from_health_routes() {
         let root = deployment_naming_everything("routes");
-        for (id, run_path) in [("agno", "/agui"), ("llamaindex", "/run")] {
+        for (id, run_path) in [
+            ("langgraph", ""),
+            ("langgraph-ts", ""),
+            ("claude-agent-sdk", ""),
+            ("mastra", ""),
+        ] {
             let row = catalogue()
                 .into_iter()
                 .find(|row| row.id == id)
