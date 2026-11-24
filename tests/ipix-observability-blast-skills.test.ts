@@ -1,6 +1,6 @@
 /** Static developer-guidance tests, not production observability or live regression evidence. */
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const base = resolve(import.meta.dir, "..");
@@ -54,10 +54,21 @@ test("two positive and two near-miss evaluation examples distinguish their scope
 test("guidance forbids raw secrets and requires observable runtime evidence", () => {
   const obs = read(".claude/skills/production-observability/SKILL.md");
   const blast = read(".claude/skills/blast-radius-analysis/SKILL.md");
-  expect(obs).not.toContain("`root-cause-debugging`");
-  expect(
+  const fixture = JSON.parse(
     read(".claude/skills/evals/observability-blast-routing.json"),
-  ).not.toContain("root-cause-debugging");
+  ) as { cases: { expected: string }[] };
+  const sources = [obs, blast, ...fixture.cases.map((x) => x.expected)];
+  for (const source of sources) {
+    const siblingNames = [
+      ...source.matchAll(/`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`/g),
+    ]
+      .map((match) => match[1])
+      .filter((name) => name !== "ipix-open");
+    for (const name of siblingNames)
+      expect(existsSync(join(base, ".claude/skills", name, "SKILL.md"))).toBe(
+        true,
+      );
+  }
   for (const t of ["secrets", "readback", "NOT VERIFIED", "existing"])
     expect(obs).toContain(t);
   for (const t of ["Graphify", "NOT VERIFIED", "test", "generic"])
