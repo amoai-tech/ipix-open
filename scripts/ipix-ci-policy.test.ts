@@ -80,16 +80,21 @@ test("model lock selection uses the actual workflow shell without real provider 
   expect(script).not.toBe(run);
   const temp = mkdtempSync(join(tmpdir(), "ipix-ci-policy-"));
   try {
-    for (const [index, [changed, expected]] of [
-      [".github/workflows/model-lock.yml", []],
-      ["agent-crewai/requirements.txt", []],
-      ["agent-langgraph-ts/package-lock.json", ["agent-langgraph-ts"]],
+    for (const [index, [changed, expected]] of (
       [
-        "agent-mastra/Dockerfile\nagent-langgraph-ts/src/main.ts",
-        ["agent-mastra"],
-      ],
-      ["agent-langgraph-agui/src/chatgpt_models.py", ["agent-langgraph-agui"]],
-    ].entries()) {
+        [".github/workflows/model-lock.yml", []],
+        ["agent-crewai/requirements.txt", []],
+        ["agent-langgraph-ts/package-lock.json", ["agent-langgraph-ts"]],
+        [
+          "agent-mastra/Dockerfile\nagent-langgraph-ts/src/main.ts",
+          ["agent-mastra"],
+        ],
+        [
+          "agent-langgraph-agui/src/chatgpt_models.py",
+          ["agent-langgraph-agui"],
+        ],
+      ] as const
+    ).entries()) {
       const outputFile = join(temp, String(index));
       const result = Bun.spawnSync(["bash", "-c", script], {
         cwd: root,
