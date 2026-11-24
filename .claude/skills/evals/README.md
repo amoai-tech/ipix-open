@@ -46,9 +46,14 @@ The opt-in `run-routing-readonly.py` performs **one candidate and one baseline c
 Prepare a separate disposable worktree from the **exact candidate SHA**, with no development secrets, and delete *only* the selected SKILL.md inside the disposable worktree. For example, from PR #13's checkout (which contains the evaluator and accessibility skill):
 
 ~~~sh
+(
+set -e
 candidate="$(git rev-parse --show-toplevel)"
 baseline="${TMPDIR:-/tmp}/ipix-a11y-baseline-$(git rev-parse --short HEAD)"
-test ! -e "$baseline" || exit 1
+if test -e "$baseline"; then
+  echo "Baseline already exists: $baseline; inspect it before retrying" >&2
+  exit 1  # Exits only this subshell, never the user's interactive terminal
+fi
 git -C "$candidate" worktree add --detach "$baseline" HEAD
 rm "$baseline/.claude/skills/accessibility-audit/SKILL.md"
 python3 "$candidate/.claude/skills/evals/run-routing-readonly.py" \
@@ -59,6 +64,7 @@ python3 "$candidate/.claude/skills/evals/run-routing-readonly.py" \
 # The optional --timeout flag defaults to 300 seconds per model call.
 git -C "$baseline" restore .claude/skills/accessibility-audit/SKILL.md
 git -C "$candidate" worktree remove "$baseline"
+)
 ~~~
 
 Run one realistic positive and one close negative case for each new skill. **STOP and report NOT VERIFIED** on rate limits, no access, different SHAs, unsafe directories or unobserved tool events. Baseline/candidate must use the same model and permissions; score answer quality manually on correctness, security and source accuracy rather than treating a tool invocation as sufficient.
