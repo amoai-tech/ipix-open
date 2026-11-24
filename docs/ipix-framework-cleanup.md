@@ -1,20 +1,18 @@
 # iPix OpenBot framework cleanup
 
-The iPix fork builds Mastra, LangGraph AG-UI and LangGraph TypeScript. Other
-local harness source directories are retired. Bring-your-own AG-UI remains
-available for external endpoints. Historical release manifests, model-provider
-metadata and parsing/compatibility fixtures are retained where they are needed
-to read existing state; they do not install retired harnesses.
+The fork retires ten unused local framework source directories, leaving Mastra,
+LangGraph AG-UI, LangGraph TypeScript and Claude Agent SDK. Claude SDK is a
+temporary compatibility dependency for the existing desktop Claude subscription
+sign-in, image manifest, Compose profile and native tests. Removing it requires
+a separate coordinated subscription-path retirement; do not remove it alone.
 
-## Verification and merge gates
+The shared catalogue retains external-agent names and marks, old Bot subtitle
+normalization and API enum compatibility. Retired entries use localInstall:
+false: desktop does not offer them for local installation, and a saved retired
+choice fails with guidance instead of silently switching an agent. External
+AG-UI connections continue to use the existing identity and endpoint flow.
 
-- Local server development: retain the three source directories, default agent
-  selection, Compose service wiring and published image/CI matrix agreement.
-- Existing database, credentials, configuration and running containers are not
-  migrated or changed by this source cleanup.
-- Desktop Claude subscription sign-in is NOT certified by this change. The
-  upstream installer expects the removed Claude SDK image; do not release a
-  desktop installer or merge until that option is explicitly disabled or
-  supported through an approved alternative, with matching tests.
-- Audit remaining desktop historical harness tests, UI selection tests,
-  full CI and a clean-checkout runtime smoke before marking ready.
+Published images, CI matrices and source model probes cover retained engines
+only. Historical releases and model test fixtures remain readable.
+No database, credentials or running deployment changes. Verify native desktop
+tests, full CI, and clean-checkout smoke before release.

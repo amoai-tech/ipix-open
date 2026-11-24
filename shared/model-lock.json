@@ -1,6 +1,35 @@
 {
   "checkedAt": "2026-11-18",
   "engines": {
+    "agent-claude-sdk": {
+      "clients": {
+        "ag-ui-claude-sdk": "0.1.5",
+        "anthropic": "2.10.0",
+        "claude-agent-sdk": "0.2.182"
+      },
+      "providers": {
+        "anthropic": {
+          "verified": [
+            "claude-fable-5",
+            "claude-fable-5-1",
+            "claude-fable-5-2",
+            "claude-haiku-4-5-20251001",
+            "claude-haiku-5-5",
+            "claude-opus-4-5-20251101",
+            "claude-opus-4-6",
+            "claude-opus-4-7",
+            "claude-opus-4-8",
+            "claude-opus-5",
+            "claude-opus-5-5",
+            "claude-sonnet-4-5-20250929",
+            "claude-sonnet-4-6",
+            "claude-sonnet-5",
+            "claude-sonnet-5-5"
+          ],
+          "refused": {}
+        }
+      }
+    },
     "agent-langgraph-agui": {
       "clients": {
         "ag-ui-langgraph": "0.0.45",

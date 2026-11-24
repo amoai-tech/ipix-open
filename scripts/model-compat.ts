@@ -232,6 +232,7 @@ export function usableModels(
 /** A row of shared/harnesses.json, the fields this reads. */
 export type Harness = {
   image: string | null;
+  localInstall?: boolean;
   credential: string;
   port: number | null;
   runPath: string;
@@ -370,6 +371,7 @@ export function probedHarnesses(
   const locked = Object.keys(lock?.engines ?? {});
   return known.filter(
     (row) =>
+      row.localInstall !== false &&
       !!row.image &&
       (published.includes(row.image) || locked.includes(row.image)) &&
       (!only || only.includes(row.image)),

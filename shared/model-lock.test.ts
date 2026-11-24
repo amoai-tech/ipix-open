@@ -53,13 +53,13 @@ test("a refused model carries the provider's own words", () => {
   );
 });
 
-test("once the retired pinned client ran them, its historical lock offered them", () => {
-  // Historical Claude Code bump, preserved after retiring that local harness.
-  expect(RETIRED.engines["agent-claude-sdk"]?.clients["claude-code"]).not.toBe(
-    "2.1.259",
-  );
+test("once the pinned client runs them, the shipped lock offers them", () => {
+  // The Claude Code bump this commit pins.
+  expect(
+    MODEL_LOCK.engines["agent-claude-sdk"]?.clients["claude-code"],
+  ).not.toBe("2.1.259");
   const claude = offered(
-    RETIRED,
+    MODEL_LOCK,
     "agent-claude-sdk",
     "anthropic",
     anthropicIds,
@@ -103,10 +103,10 @@ test("a harness that takes OpenAI's newest models through the Responses API is o
 
 test("a model released after the last check waits for it", () => {
   expect(
-    lockVerdict(RETIRED, "agent-claude-sdk", "anthropic", "claude-opus-6"),
+    lockVerdict(MODEL_LOCK, "agent-claude-sdk", "anthropic", "claude-opus-6"),
   ).toEqual({ status: "unchecked" });
   expect(
-    lockAllows(RETIRED, "agent-claude-sdk", "anthropic", "claude-opus-6"),
+    lockAllows(MODEL_LOCK, "agent-claude-sdk", "anthropic", "claude-opus-6"),
   ).toBe(false);
 });
 
@@ -115,7 +115,8 @@ test("what the check never ran is open, so nobody loses their models to missing 
   expect(offered(MODEL_LOCK, undefined, "anthropic", anthropicIds)).toEqual(
     anthropicIds,
   );
-  // No key for xAI in CI.
+  // The archived Agno lock contains no xAI provider entry.
+  expect(RETIRED.engines["agent-agno"]?.providers.xai).toBeUndefined();
   expect(lockVerdict(RETIRED, "agent-agno", "xai", "grok-4.7")).toEqual({
     status: "open",
   });

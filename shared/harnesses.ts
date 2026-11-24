@@ -40,6 +40,8 @@ export type Harness = {
   webSummary: string | null;
   /** The directory a release builds `openbot-<directory>` from, not the id. Null when none. */
   image: string | null;
+  /** False for external-only identities whose local source is retired. */
+  localInstall?: boolean;
   port: number | null;
   healthPath: string | null;
   runPath: string;
@@ -66,8 +68,20 @@ export type Harness = {
 export const HARNESSES: readonly Harness[] =
   catalogue.harnesses as readonly Harness[];
 
-/** Retained iPix frameworks: lead with LangGraph, then preserve catalogue order. */
-const WEB_LEAD: readonly string[] = ["langgraph"];
+/**
+ * The partners a person adding a Bot looks for first, in the order the web lists them.
+ *
+ * The catalogue is ranked stars-first, which suits the desktop installer choosing an image to run
+ * but not somebody scanning for their own framework: Atai, October 19, read CrewAI, LlamaIndex and
+ * Agno at the top as "the ones on top don't make sense", and reported LangChain and ADK missing when
+ * they were fourth and fifth. These lead; everything else follows in the catalogue's own order.
+ */
+const WEB_LEAD: readonly string[] = [
+  "claude-agent-sdk",
+  "google-adk",
+  "antigravity",
+  "langgraph",
+];
 
 /** Where a harness sits in the web list: its lead position, or after every lead. */
 function webRank(harness: Harness): number {
@@ -194,7 +208,7 @@ export function declaredHarness(id: unknown): Harness | undefined {
 /**
  * The harness an image reference runs, by the directory a release builds it from:
  * `ghcr.io/copilotkit/openbot-agent-langgraph-agui@sha256:…` is LangChain. Undefined for
- * an image OpenBot does not publish.
+ * an image the catalogue does not recognize. Retired local images remain recognizable for historical Bot labels.
  */
 export function harnessForImage(reference: string): Harness | undefined {
   const name = /(?:^|\/)(?:openbot-)?(agent-[a-z0-9-]+)(?::|@|$)/.exec(

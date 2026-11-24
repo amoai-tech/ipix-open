@@ -1,1 +1,6 @@
-["agent-langgraph-agui", "agent-langgraph-ts", "agent-mastra"]
+[
+  "agent-langgraph-agui",
+  "agent-langgraph-ts",
+  "agent-claude-sdk",
+  "agent-mastra"
+]

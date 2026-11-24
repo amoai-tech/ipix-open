@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import {
   DEFAULT_BOT_ENGINE,
+  declaredHarness,
   HARNESSES,
   harnessForImage,
   reachedThroughMastra,
@@ -11,8 +12,19 @@ import {
 
 test("carries every row the desktop picker offers, in its order", () => {
   expect(HARNESSES.map((h) => h.id)).toEqual([
+    "crewai",
+    "llamaindex",
+    "agno",
     "langgraph",
     "langgraph-ts",
+    "google-adk",
+    "antigravity",
+    "pydantic-ai",
+    "microsoft-agent-framework",
+    "claude-agent-sdk",
+    "strands",
+    "ag2",
+    "langroid",
     "mastra",
     "byo-url",
   ]);
@@ -20,8 +32,19 @@ test("carries every row the desktop picker offers, in its order", () => {
 
 test("leads the web list with the partners people look for, keeping the rest in order", () => {
   expect(WEB_HARNESSES.map((h) => h.id)).toEqual([
+    "claude-agent-sdk",
+    "google-adk",
+    "antigravity",
     "langgraph",
+    "crewai",
+    "llamaindex",
+    "agno",
     "langgraph-ts",
+    "pydantic-ai",
+    "microsoft-agent-framework",
+    "strands",
+    "ag2",
+    "langroid",
     "mastra",
     "byo-url",
   ]);
@@ -51,7 +74,7 @@ test("gives a web-specific summary only where the installer's is false here", ()
   const rewritten = HARNESSES.filter((h) => h.webSummary !== null).map(
     (h) => h.id,
   );
-  expect(rewritten.sort()).toEqual(["byo-url"]);
+  expect(rewritten.sort()).toEqual(["byo-url", "claude-agent-sdk"]);
 });
 
 /*
@@ -98,13 +121,27 @@ test("names the engine new Bots run on, at the image, port and paths it serves",
   ).toBe("langgraph");
 });
 
-test("iPix does not offer retired local framework images", () => {
-  expect(HARNESSES.map((h) => h.image)).toEqual([
-    "agent-langgraph-agui",
-    "agent-langgraph-ts",
-    "agent-mastra",
-    null,
-  ]);
+test("CrewAI uses its expected image, health endpoint and port", () => {
+  const crewai = HARNESSES.find((h) => h.id === "crewai");
+  expect(crewai?.image).toBe("agent-crewai");
+  expect(crewai?.healthPath).toBe("/health");
+  expect(crewai?.port).toBe(4202);
+});
+
+/*
+ * Antigravity only ever runs on Gemini: its README says the harness requires a Gemini API key
+ * wherever `base_url` points. `any-provider` would let a deployment holding only an OpenAI key
+ * install it and get a Bot that cannot answer — the shape of failure `webCreate: false` exists to
+ * stop.
+ */
+test("marks Antigravity as needing Google's key rather than any provider's", () => {
+  const antigravity = HARNESSES.find((h) => h.id === "antigravity");
+  expect(antigravity?.credential).toBe("google");
+  expect(antigravity?.name).toBe("Google Antigravity");
+  expect(antigravity?.image).toBe("agent-antigravity");
+  expect(antigravity?.port).toBe(4214);
+  expect(antigravity?.mark).toBe("antigravity");
+  expect(antigravity?.webCreate).toBe(true);
 });
 
 test("gives every row a credential the type actually names", () => {
@@ -137,7 +174,7 @@ test("reads a subtitle OpenBot wrote under earlier names the way it writes it no
   }
   expect(
     withCurrentFrameworkNames("Everyday life. Powered by Claude Agent SDK."),
-  ).toBe("Everyday life. Powered by Claude Agent SDK.");
+  ).toBe(starterSubtitle("Claude Agent SDK"));
   // A name with its own parentheses reads without them, so the subtitle's never nest.
   const typescript =
     "Everyday life agent. (powered by a LangGraph TypeScript agent; you can bring your own agent from any stack.)";
@@ -164,4 +201,38 @@ test("reads a subtitle OpenBot wrote under earlier names the way it writes it no
   ]) {
     expect(withCurrentFrameworkNames(title)).toBe(title);
   }
+});
+
+test("retired framework labels remain available for external agents only", () => {
+  const local = HARNESSES.filter(
+    (h) => h.image && h.localInstall !== false,
+  ).map((h) => h.image);
+  expect(local.sort()).toEqual([
+    "agent-claude-sdk",
+    "agent-langgraph-agui",
+    "agent-langgraph-ts",
+    "agent-mastra",
+  ]);
+  for (const id of ["crewai", "google-adk", "pydantic-ai"]) {
+    const harness = declaredHarness(id);
+    expect(harness?.localInstall).toBe(false);
+    expect(harness?.mark).toBeTruthy();
+    expect(WEB_HARNESSES).toContain(harness!);
+    expect(
+      withCurrentFrameworkNames(`Everyday life. Powered by ${harness!.name}.`),
+    ).toBe(starterSubtitle(harness!.name));
+  }
+});
+test("local installable images match the release manifest and source", async () => {
+  const published = await Bun.file(
+    `${import.meta.dir}/../.github/published-images.json`,
+  ).json();
+  const local = HARNESSES.filter(
+    (h) => h.image && h.localInstall !== false,
+  ).map((h) => h.image);
+  expect([...local].sort()).toEqual([...published].sort());
+  for (const image of local)
+    expect(
+      await Bun.file(`${import.meta.dir}/../${image}/Dockerfile`).exists(),
+    ).toBe(true);
 });

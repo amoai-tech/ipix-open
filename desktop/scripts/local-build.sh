@@ -46,7 +46,7 @@ STATE="${OPENBOT_LOCAL_BUILD_DIR:-$HOME/.openbot-local-build}"
 # in backend-images.env. And agent-langgraph-ts, the default Bot every other sign-in runs: a base
 # release from before it has no digest to fill it in with, and the manifest must pin every image the
 # published list names.
-DEFAULT_IMAGES="agent-langgraph-ts"
+DEFAULT_IMAGES="agent-claude-sdk agent-langgraph-ts"
 IMAGES=()
 for image in ${OPENBOT_LOCAL_IMAGES-$DEFAULT_IMAGES}; do IMAGES+=("$image"); done
 
