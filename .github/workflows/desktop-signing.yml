@@ -23,17 +23,6 @@ on:
         type: boolean
         default: false
         required: false
-  # A label permits validation before this workflow exists on main. New pushes
-  # run only the checks: remove/reapply the label to request signing a new head.
-  pull_request:
-    types: [opened, synchronize, reopened, labeled]
-    paths:
-      - desktop/**
-      - package.json
-      - .github/workflows/desktop-signing.yml
-      - .github/workflows/publish-release.yml
-      - scripts/release-*
-      - docs/windows-signing.md
 
 permissions:
   contents: read
@@ -81,16 +70,12 @@ jobs:
       artifact: openbot-windows-signed-${{ github.run_id }}-${{ github.run_attempt }}
       # Whether the build carries the updater: every build but a pinned candidate or beta.
       updater: ${{ steps.build.outputs.updater }}
-    if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.signing-mode == 'keyvault') ||
-      (github.event_name == 'pull_request' && github.event.action == 'labeled' &&
-       github.event.label.name == 'windows-signing' &&
-       github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name == 'workflow_dispatch' && inputs.signing-mode == 'keyvault'
     environment: windows-signing
     permissions:
       contents: read
       id-token: write
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'windows-2025' || 'openbot-windows-16core' }}
+    runs-on: windows-2025
     timeout-minutes: 60
     defaults:
       run:
