@@ -20,10 +20,10 @@ Define the **observable user/system outcome**, not a private helper's call seque
 
 ## Sources and destination
 
-**Reference — ADAPT:** https://github.com/addyosmani/agent-skills/blob/8c99fa36d90068c82d547f7c12a9d67a3e95f4ee/skills/test-driven-development/SKILL.md → red/green/refactor and prove-it bug-fix discipline. **Do not copy:** JavaScript runner assumptions or make every docs edit run a browser. **Apply to:** this skill and the single existing iPix test suite relevant to the change. **Verify:** the same test was genuinely red before the fix and green afterward.
+**Reference — ADAPT:** https://github.com/addyosmani/agent-skills/blob/8c99fa36d90068c82d547f7c12a9d67a3e95f4ee/skills/test-driven-development/SKILL.md → red/green/refactor and prove-it bug-fix discipline. **Do not copy:** Jest/Vitest or Node-specific test commands as defaults; use the installed Bun runner and do not make every docs edit run a browser. **Apply to:** this skill and the single existing iPix test suite relevant to the change. **Verify:** the same test was genuinely red before the fix and green afterward.
 
 **Reference — MODEL:** https://github.com/cursor/plugins/blob/005d8f6e8ec057b738adcd08a08b30db0478402d/pstack/skills/principle-test-behavior-not-implementation/SKILL.md → assert externally observable results instead of internal call order. **Do not copy:** project-specific test tooling. **Apply to:** acceptance assertions for changed interfaces and persisted results. **Verify:** changing only internals should not break the test; breaking the user-observable result must.
 
 **Reference — MODEL:** https://github.com/cursor/plugins/blob/005d8f6e8ec057b738adcd08a08b30db0478402d/pstack/skills/principle-make-operations-idempotent/SKILL.md → handle repeated/crashed write steps. **Do not copy:** assumptions that every action is safe to retry without reauthorization. **Apply to:** consequential iPix save tests in isolated QA. **Verify:** current actor/revision checks plus duplicate-submit and readback results.
 
-**Routing:** Use `root-cause-debugging` only for investigating an unexplained failure and `task-verifier` for independent Done judgment; this skill drives behavioral code implementation. No production writes are authorized here.
+**Routing:** For an unexplained failure, start with the RED reproducibility steps above and the existing Bun/Playwright tests. `qa-review` finds risks and `task-verifier` independently gates Done. Do not require a sibling PR skill that is not yet merged. No production writes are authorized here.

@@ -64,6 +64,8 @@ test("cross-tenant authorization and red/green persistence proof are required", 
     "prompt injection",
   ])
     expect(sec.toLowerCase()).toContain(value.toLowerCase());
+  expect(tdd).not.toContain("`root-cause-debugging`");
+  expect(tdd).toContain("installed Bun runner");
   for (const value of [
     "RED",
     "GREEN",
