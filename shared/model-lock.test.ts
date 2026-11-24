@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import anthropicListing from "./fixtures/model-listings/anthropic-models.json";
 import openaiListing from "./fixtures/model-listings/openai-models.json";
 import before from "./fixtures/model-lock-before-claude-code-bump.json";
+import retired from "./fixtures/model-lock-retired-harnesses.json";
 import {
   lockAllows,
   lockVerdict,
@@ -18,6 +19,7 @@ import {
  */
 
 const BEFORE = before as ModelLock;
+const RETIRED = retired as ModelLock;
 const anthropicIds = anthropicListing.data.map((model) => model.id);
 const openaiIds = openaiListing.data.map((model) => model.id);
 
@@ -94,7 +96,7 @@ test("the shipped lock still holds back what a provider really refuses", () => {
 });
 
 test("a harness that takes OpenAI's newest models through the Responses API is offered them", () => {
-  const ag2 = offered(MODEL_LOCK, "agent-ag2", "openai", openaiIds);
+  const ag2 = offered(RETIRED, "agent-ag2", "openai", openaiIds);
   for (const model of ["gpt-6.1-terra", "gpt-5-pro"])
     if (openaiIds.includes(model)) expect(ag2).toContain(model);
 });
@@ -113,8 +115,9 @@ test("what the check never ran is open, so nobody loses their models to missing 
   expect(offered(MODEL_LOCK, undefined, "anthropic", anthropicIds)).toEqual(
     anthropicIds,
   );
-  // No key for xAI in CI.
-  expect(lockVerdict(MODEL_LOCK, "agent-agno", "xai", "grok-4.7")).toEqual({
+  // The archived Agno lock contains no xAI provider entry.
+  expect(RETIRED.engines["agent-agno"]?.providers.xai).toBeUndefined();
+  expect(lockVerdict(RETIRED, "agent-agno", "xai", "grok-4.7")).toEqual({
     status: "open",
   });
   expect(

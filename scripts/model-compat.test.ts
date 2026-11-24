@@ -12,6 +12,7 @@ import {
   PROVIDERS,
   parseCapabilities,
   providersFor,
+  probedHarnesses,
   renderTable,
   usableModels,
 } from "./model-compat";
@@ -400,4 +401,28 @@ test("every published harness is one the matrix can run", () => {
     expect(harness, image).toBeDefined();
     expect(providersFor(harness!).length, image).toBeGreaterThan(0);
   }
+});
+
+test("retired local engines are not probed even if historical image or lock data names them", () => {
+  const known = [
+    {
+      image: "agent-crewai",
+      credential: "any-provider",
+      port: 4202,
+      runPath: "",
+      localInstall: false,
+    },
+    {
+      image: "agent-langgraph-ts",
+      credential: "any-provider",
+      port: 4215,
+      runPath: "",
+    },
+  ];
+  expect(
+    probedHarnesses(known, ["agent-crewai", "agent-langgraph-ts"], undefined),
+  ).toEqual([known[1]!]);
+  expect(
+    probedHarnesses(known, ["agent-crewai"], undefined, ["agent-crewai"]),
+  ).toEqual([]);
 });
