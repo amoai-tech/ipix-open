@@ -309,12 +309,39 @@ jobs:
   checks:
     needs: [metadata, verify, gate]
     if: needs.metadata.outputs.is_release == 'true' && needs.gate.outputs.full_checks == 'true'
-    uses: ./.github/workflows/ci.yml
+    uses: $/.github/workflows/ci.yml
+    with:
+      cross_platform_startup: true
     permissions:
       contents: read
       # CI's `changes` job asks for it, and a called job cannot have more than its caller grants. On
       # this push event it reads nothing and runs every check.
       actions: read
+
+  # Main CI is Linux-first. When its result replaces the full release suite,
+  # run only the missing startup regressions on the exact release commit.
+  release-startup:
+    name: release startup (${{ matrix.os }})
+    needs: [metadata, verify, gate]
+    if: needs.metadata.outputs.is_release == 'true' && needs.gate.outputs.full_checks == 'false'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.3
+          no-cache: ${{ runner.os == 'Windows' }}
+      - run: bun install --frozen-lockfile
+      - run: bun test app/tests/build-cache.test.ts
 
   # The images, built once from the commit that passed the checks above, and tagged with this
   # release's version and `latest`, with the server, computer and supervisor pinned at the tag this
@@ -326,13 +353,14 @@ jobs:
   # After `checks` passed, or after `gate` passed having decided `checks` need not run. Nothing else:
   # a `checks` skipped for any other reason, or a `gate` that failed, publishes nothing.
   images:
-    needs: [metadata, verify, gate, checks]
+    needs: [metadata, verify, gate, checks, release-startup]
     if: >-
       !cancelled() && needs.metadata.outputs.is_release == 'true' &&
       needs.verify.result == 'success' && needs.gate.result == 'success' &&
-      (needs.checks.result == 'success' ||
-       (needs.checks.result == 'skipped' && needs.gate.outputs.full_checks == 'false'))
-    uses: ./.github/workflows/images.yml
+      ((needs.checks.result == 'success' && needs.gate.outputs.full_checks == 'true') ||
+       (needs.checks.result == 'skipped' && needs.gate.outputs.full_checks == 'false' &&
+        needs.release-startup.result == 'success'))
+    uses: $/.github/workflows/images.yml
     with:
       ref: ${{ github.sha }}
       tags: ${{ needs.metadata.outputs.version }}
@@ -365,7 +393,7 @@ jobs:
     if: >-
       !cancelled() && needs.metadata.outputs.prerelease == 'true' &&
       needs.images.result == 'success'
-    uses: ./.github/workflows/desktop-build.yml
+    uses: $/.github/workflows/desktop-build.yml
     with:
       ref: ${{ github.sha }}
       channel: release

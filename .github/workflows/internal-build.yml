@@ -38,7 +38,7 @@ jobs:
   images:
     name: images
     needs: prepare
-    uses: ./.github/workflows/images.yml
+    uses: $/.github/workflows/images.yml
     with:
       ref: ${{ github.sha }}
       tags: ""
@@ -54,7 +54,7 @@ jobs:
   desktop:
     name: desktop
     needs: images
-    uses: ./.github/workflows/desktop-build.yml
+    uses: $/.github/workflows/desktop-build.yml
     with:
       ref: ${{ github.sha }}
       channel: internal

@@ -1108,7 +1108,7 @@ A job added to `ci.yml` is covered by it without anybody updating a list.
 | `tests` | a decision made wrongly, in isolation |
 | `python harness (agent-langgraph-agui)` and one per harness | a provider-boundary regression in that Python Bot harness |
 | `compose config` | a Compose file an older Compose cannot read |
-| `startup (ubuntu-latest)` | the app's serve-or-build cache on Linux; Windows/macOS startup checks are opt-in through CI dispatch |
+| `startup (ubuntu-latest)` | the app's serve-or-build cache on Linux; Windows/macOS startup checks are opt-in through CI dispatch and required for desktop releases |
 | `build` | the app not compiling |
 | `component dockerfiles` | a Dockerfile a release would publish that no longer builds, or one the publish list has stopped covering |
 
@@ -1123,7 +1123,7 @@ release commit:
 
 - When the release commit changes nothing but the release files from the commit it merged onto
   (its first parent), and main's CI passed on that commit, they do not. That commit's tree has been
-  through all of them already. The release files are `CHANGELOG.md` and `release-policy.json`, which
+  through the Linux-first suite already. The release workflow runs the missing Windows and macOS startup tests before publishing. The release files are `CHANGELOG.md` and `release-policy.json`, which
   may change freely, and the `version` in `package.json`, the `OPENBOT_BACKEND_TAG` line in
   `backend-images.env` and the `openbot-desktop` version line in
   `desktop/src-tauri/Cargo.toml` and `Cargo.lock`, which may change nothing else. Only a run of `ci.yml` for a push to this repository's `main`, at
@@ -1132,7 +1132,7 @@ release commit:
   their place the job re-runs the checks that read the files the release did change: formatting and
   lint, the desktop version against `package.json`, and every test that names
   `CHANGELOG.md` or `release-policy.json`.
-- Otherwise they all run again, as before: when any other path is added, removed, renamed or
+- Otherwise they all run again, including cross-platform startup: when any other path is added, removed, renamed or
   changed, when a version file changes more than its version, or when main's CI on that commit
   failed, was cancelled, never ran, could not be read, or was still running after the wait.
 

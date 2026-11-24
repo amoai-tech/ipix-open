@@ -9,7 +9,7 @@ but packaging and release operations do not run on ordinary web PRs.
 | Core CI | PRs and main; Linux startup, existing change detection, tests, builds, API, browser and verification | CI → Run workflow with cross_platform_startup for Windows/macOS; full-ci label for component Dockerfiles |
 | Security scanning | Workflow/action changes and the existing security schedule | Existing security workflows remain |
 | Desktop | Linux native regression and existing Docker live tests when desktop inputs change, including shared harness catalogue | Desktop → Run workflow for complete Mac, Windows and Linux installers |
-| Desktop upgrade | Previous-release check on upgrade, deployment, Compose, backend image or release-policy changes; no nightly run | Desktop upgrade → Run workflow; previous release by default, full release window optional |
+| Desktop upgrade | Previous-release check on native Rust tree, Compose, backend image or release-policy changes; no nightly run | Desktop upgrade → Run workflow; previous release by default, full release window optional |
 | Model lock | Same-repository PRs with model/client or compatibility implementation/lock changes; workflow-only edits do not invoke model providers | Model lock → Run workflow to probe one retained framework, or existing local CLI; no new provider credentials |
 | macOS signing | Release tags only | Explicit dispatch, protected signing environment |
 | Windows signing | No ordinary PR run | Release workflow dispatch or explicit dispatch, protected signing environment |
@@ -21,17 +21,20 @@ but packaging and release operations do not run on ordinary web PRs.
   use ubuntu-latest, windows-latest/windows-2025, macOS labels and the existing
   Arm64 runner in workflow runner fields. Do not copy organization-specific runner names.
 - [Workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax):
-  use workflow_dispatch for historical upgrades, cross-platform startup, model probes and packaging; use PR path filters for upgrade-related changes; keep release
+  use workflow_dispatch for historical upgrades, cross-platform startup, model probes and packaging; use conservative PR path filters for upgrade dependencies; keep release
   reusable workflows and signing environments. Do not add secret-bearing PR triggers.
 - [Concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency):
   CI and Desktop group by workflow and PR ref, or main commit; a new PR push
   cancels its own obsolete run without cancelling a different PR.
+
+- [GitHub self-repository syntax](https://github.blog/changelog/2026-07-30-reference-same-repository-actions-with-self-repository-syntax/): retain `$/` for same-commit actions and reusable workflow calls. Older actionlint 1.7.12 does not recognize this supported syntax; GitHub-hosted runs and current zizmor are authoritative.
 
 ## Release and review gates
 
 - Confirm the current-head CI verify check actually runs on a standard runner.
 - For desktop inputs, confirm native core and applicable live jobs ran; a skipped
   package build is intentional, not proof of macOS/Windows installer compatibility.
+- Actual releases always verify Windows/macOS startup: full CI opts in, or the reuse path runs just the missing startup checks before publishing. Ordinary PRs/main stay Linux-only.
 - Before shipping a desktop release, explicitly run the applicable upgrade and
   all-platform packaging checks, then retain the protected signing flow. Inspect
   the previous-release test output: no available earlier release is not a tested upgrade. Manual upgrade validation fails when there is no published baseline. Before the first iPix release, PR #5 owns the separately pinned upstream migration and recovery proof; do not treat this workflow's warning as proof.

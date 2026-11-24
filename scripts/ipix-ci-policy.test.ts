@@ -21,7 +21,7 @@ test("no workflow or runner matrix requests CopilotKit's unavailable larger runn
     expect(read(file).jobs, file).toBeDefined();
     const source = readFileSync(join(dir, file), "utf8");
     expect(source, file).not.toMatch(/openbot-(ubuntu|windows)-16core/);
-    expect(source, file).not.toContain("uses: $/.github/");
+    expect(source, file).not.toContain("uses: ./.github/");
   }
 });
 
@@ -92,8 +92,7 @@ test("upgrade regressions run only for relevant PRs; historical runs are explici
   ]);
   expect(upgrade.on.pull_request).toEqual({
     paths: [
-      "desktop/src-tauri/src/upgrade*.rs",
-      "desktop/src-tauri/src/deployment*.rs",
+      "desktop/src-tauri/**",
       "desktop/scripts/upgrade-legs.ts",
       "docker-compose.yml",
       "backend-images.env",

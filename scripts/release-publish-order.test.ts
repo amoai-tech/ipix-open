@@ -84,7 +84,8 @@ test("the gate decides with release-ci-gate.ts, and re-runs the checks that read
 });
 
 test("the full checks run only when the gate says so", () => {
-  expect(job("checks").uses).toBe("./.github/workflows/ci.yml");
+  expect(job("checks").uses).toBe("$/.github/workflows/ci.yml");
+  expect(job("checks").with?.cross_platform_startup).toBe(true);
   expect(needs("checks")).toEqual(["metadata", "verify", "gate"]);
   expect(condition("checks")).toBe(
     "needs.metadata.outputs.is_release == 'true' && needs.gate.outputs.full_checks == 'true'",
@@ -94,13 +95,39 @@ test("the full checks run only when the gate says so", () => {
 // A skipped `checks` must not let anything through unless the gate decided to skip it and then
 // passed, re-checks included. A failed gate, or a `checks` skipped for any other reason, stops it.
 test("the images are built only after the full checks passed, or after the gate passed having skipped them", () => {
-  expect(needs("images")).toEqual(["metadata", "verify", "gate", "checks"]);
+  expect(needs("images")).toEqual([
+    "metadata",
+    "verify",
+    "gate",
+    "checks",
+    "release-startup",
+  ]);
   expect(condition("images")).toBe(
     "!cancelled() && needs.metadata.outputs.is_release == 'true' && " +
       "needs.verify.result == 'success' && needs.gate.result == 'success' && " +
-      "(needs.checks.result == 'success' || " +
-      "(needs.checks.result == 'skipped' && needs.gate.outputs.full_checks == 'false'))",
+      "((needs.checks.result == 'success' && needs.gate.outputs.full_checks == 'true') || " +
+      "(needs.checks.result == 'skipped' && needs.gate.outputs.full_checks == 'false' && " +
+      "needs.release-startup.result == 'success'))",
   );
+});
+
+test("release reuse runs missing macOS and Windows startup tests before publishing", () => {
+  const startup = job("release-startup");
+  expect(needs("release-startup")).toEqual(["metadata", "verify", "gate"]);
+  expect(condition("release-startup")).toBe(
+    "needs.metadata.outputs.is_release == 'true' && needs.gate.outputs.full_checks == 'false'",
+  );
+  expect(startup.permissions).toEqual({ contents: "read" });
+  expect(startup.steps).toEqual(
+    workflow("ci.yml").jobs.startup?.steps?.map((step) =>
+      step.uses?.startsWith("actions/checkout@")
+        ? { ...step, with: { ...step.with, ref: expression("github.sha") } }
+        : step,
+    ),
+  );
+  expect(startup).toMatchObject({
+    strategy: { matrix: { os: ["macos-latest", "windows-latest"] } },
+  });
 });
 
 test("the release is created right after the images, and the signing runs are started from it", () => {
@@ -136,7 +163,7 @@ test("the release is created right after the images, and the signing runs are st
 
 test("a stable release builds no installers in the publish run; a candidate or beta builds its own beside the release", () => {
   const desktop = job("desktop");
-  expect(desktop.uses).toBe("./.github/workflows/desktop-build.yml");
+  expect(desktop.uses).toBe("$/.github/workflows/desktop-build.yml");
   expect(needs("desktop")).toEqual(["metadata", "verify", "images"]);
   expect(condition("desktop")).toBe(
     "!cancelled() && needs.metadata.outputs.prerelease == 'true' && needs.images.result == 'success'",

@@ -13,8 +13,8 @@ name: Desktop upgrade
 on:
   pull_request:
     paths:
-      - "desktop/src-tauri/src/upgrade*.rs"
-      - "desktop/src-tauri/src/deployment*.rs"
+      # Native upgrade dependencies are transitive; keep the whole Rust tree.
+      - "desktop/src-tauri/**"
       - "desktop/scripts/upgrade-legs.ts"
       - "docker-compose.yml"
       - "backend-images.env"
