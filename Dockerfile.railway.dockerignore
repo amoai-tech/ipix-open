@@ -4,6 +4,7 @@
 !package.json
 !bun.lock
 !tsconfig.base.json
+!release-policy.json
 !app/
 !app/package.json
 !app/index.html
