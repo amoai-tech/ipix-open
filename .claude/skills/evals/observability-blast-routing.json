@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "scope": "Developer-time skill selection fixtures; not real agent or production evidence",
+  "cases": [
+    {
+      "id": "observability-trace",
+      "skill": "production-observability",
+      "shouldTrigger": true,
+      "prompt": "For the standalone ipix-open Planner service, design safe error metrics and correlation IDs that let a support operator distinguish a failed Cloudinary upload from a successful authorized Supabase asset link without logging private customer data.",
+      "expected": "Starts with operational questions, reuses installed telemetry, separates proposal from save, masks PII/tokens and defines a synthetic success/error trace proof."
+    },
+    {
+      "id": "observability-incident-negative",
+      "skill": "production-observability",
+      "shouldTrigger": false,
+      "prompt": "A specific Bun test is now failing with a reproducible TypeError. Diagnose and fix this active regression, not design logging or an alerting platform.",
+      "expected": "Uses an existing focused failing Bun test and avoids invoking `production-observability` for a one-off active bug."
+    },
+    {
+      "id": "blast-radius-shared-auth",
+      "skill": "blast-radius-analysis",
+      "shouldTrigger": true,
+      "prompt": "A PR changes shared OpenBot authentication to support the isolated fashion Planner. Determine whether ordinary Mastra Bots could inherit privileged tenant tools, identify the critical assumption and prove no other Bot behavior changed.",
+      "expected": "Discovers dependent public behavior, does not trust graph omissions, and requires an executed decisive generic-Bot/tenant denial regression."
+    },
+    {
+      "id": "blast-radius-copy-negative",
+      "skill": "blast-radius-analysis",
+      "shouldTrigger": false,
+      "prompt": "Fix a spelling mistake in a README paragraph; no exported API, data shape, runtime file or user behavior is modified.",
+      "expected": "Does not invoke a broad impact audit for a trivial documentation typo."
+    }
+  ]
+}
