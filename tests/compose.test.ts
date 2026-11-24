@@ -887,7 +887,10 @@ test("starts each service on the OpenBot image as its own part of it, never as t
   expect(services["agent-computer"].image).toBe(pinned);
   expect(services.supervisor.environment?.COMPUTER_IMAGE).toBe(pinned);
 
-  expect(services.server.entrypoint).toEqual(["/app/bin/openbot", "server"]);
+  expect(services.server.entrypoint?.slice(0, 2)).toEqual(["/bin/sh", "-ec"]);
+  expect(services.server.entrypoint?.[2]).toContain(
+    "exec /app/bin/openbot server",
+  );
   expect(services.server.command ?? null).toBeNull();
   expect(services.server.working_dir).toBe("/app/server");
   expect(services["agent-computer"].entrypoint).toEqual([
@@ -917,7 +920,9 @@ test("starts each service on the OpenBot image as its own part of it, never as t
       entrypoint:
         name === "agent-computer"
           ? "/app/bin/openbot-computer"
-          : "/app/bin/openbot",
+          : name === "server"
+            ? "/bin/sh"
+            : "/app/bin/openbot",
     });
   }
 });

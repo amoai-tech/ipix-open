@@ -1,5 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "yaml";
 
@@ -65,6 +74,58 @@ describe("canonical iPix application package", () => {
       expect(
         skills.find((s: { slug: string }) => s.slug === slug).tools,
       ).toEqual([]);
+    }
+  });
+
+  test("default assistants have no authoring grants and knowledge metadata is not OneDrive", () => {
+    for (const agent of read("agents.yaml").agents) {
+      expect(agent.skills ?? []).not.toContain("bot-creator");
+      expect(agent.skills ?? []).not.toContain("skill-creator");
+    }
+    expect(
+      read("knowledge.yaml").sources.map((s: { type: string }) => s.type),
+    ).toEqual(["google-drive"]);
+  });
+
+  test("Compose guard refuses each missing required file before executing server", () => {
+    const { services } = parse(
+      readFileSync(join(root, "docker-compose.yml"), "utf8"),
+    );
+    const script = services.server.entrypoint[2].replaceAll("$$", "$");
+    const fixture = mkdtempSync(join(tmpdir(), "ipix-package-guard-"));
+    const names = ["brand", "agents", "channels", "model", "knowledge"];
+    try {
+      for (const missing of names) {
+        for (const name of names)
+          writeFileSync(join(fixture, `${name}.yaml`), "test\n");
+        rmSync(join(fixture, `${missing}.yaml`));
+        const result = spawnSync("/bin/sh", ["-ec", script], {
+          env: {
+            ...process.env,
+            TENANT_PACKAGE_DIR: fixture,
+            OPENBOT_REFUSAL_FILE: join(fixture, "refusal"),
+          },
+          encoding: "utf8",
+        });
+        expect(result.status).toBe(78);
+        expect(result.stderr).toContain(`${missing}.yaml`);
+        expect(readFileSync(join(fixture, "refusal"), "utf8")).toContain(
+          `${missing}.yaml`,
+        );
+      }
+      writeFileSync(join(fixture, "knowledge.yaml"), "");
+      const result = spawnSync("/bin/sh", ["-ec", script], {
+        env: {
+          ...process.env,
+          TENANT_PACKAGE_DIR: fixture,
+          OPENBOT_REFUSAL_FILE: join(fixture, "refusal"),
+        },
+        encoding: "utf8",
+      });
+      expect(result.status).toBe(78);
+      expect(result.stderr).toContain("knowledge.yaml");
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
     }
   });
 

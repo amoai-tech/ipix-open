@@ -4,19 +4,9 @@ import { join } from "node:path";
 import { parse } from "yaml";
 import { BOT_CREATOR_SLUG } from "@/lib/agents/proposal";
 
-/**
- * The coupling that breaks silently, in both directions.
- *
- * `BOT_CREATOR_SLUG` decides which Bots the app offers `list_bots`, `read_bot`, `list_bot_skills`
- * and `save_bot` to. The shipped package decides which slug exists in a deployment and which Bot
- * holds it. Nothing connects the two but the string, and every way of breaking it looks like a
- * healthy deployment: rename it in the YAML and the tools are never offered; grant it to nobody and
- * there is no Bot to make coworkers with. In both cases a person asks their Bot to make a coworker,
- * it says it cannot, and there is nothing on any screen that explains why.
- *
- * So this reads the package the way the loader does and asserts the three facts that have to hold
- * together. It is the only thing that makes that failure loud, which is why it must not be deleted
- * along with whichever half of the coupling a later change moves.
+/** The iPix package retains the native authoring slug for explicit operator grants,
+ * but neither default coworker holds it. Keep the SDK coupling and intentional
+ * default-deny policy visible in tests; user-authorized writes still use native APIs.
  */
 
 const PACKAGE = join(import.meta.dir, "../../config/ipix");
@@ -35,14 +25,14 @@ test("the deployment ships a skill under the slug the app gates on", () => {
   expect(shipped).toBeDefined();
 });
 
-test("a Bot in the package actually holds it", () => {
+test("no default iPix Bot holds the authoring grant", () => {
   const { agents } = read<AgentsFile>("agents.yaml");
   const holders = agents.filter((agent) =>
     (agent.skills ?? []).includes(BOT_CREATOR_SLUG),
   );
 
-  // At least one, because a slug granted to nobody offers the tools to nobody.
-  expect(holders.length).toBeGreaterThan(0);
+  // Explicit operator grants are required; default fashion conversations do not offer authoring.
+  expect(holders).toEqual([]);
 });
 
 /**

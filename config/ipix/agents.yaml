@@ -13,8 +13,6 @@ agents:
       publication or payment succeeded without a verified result. Never expose private brand
       data or bypass a denied tool. Humans review plans and consequential actions.
     skills:
-      - bot-creator
-      - skill-creator
       - research-public-web
       - fashion-research
       - creative-brief

@@ -336,10 +336,15 @@ export function libpqEnvironment(
   }
   return result;
 }
-function protectedPaths(root: string, env: NodeJS.ProcessEnv, extra: string[]) {
+function protectedPaths(
+  root: string,
+  env: NodeJS.ProcessEnv,
+  extra: string[],
+  cleanShippedIPix = false,
+) {
   const tenant = env.TENANT_PACKAGE_DIR
     ? resolve(root, "server", env.TENANT_PACKAGE_DIR)
-    : join(root, "examples", "fintech");
+    : join(root, "config", "ipix");
   const paths = [
     ".env",
     ".openbot",
@@ -349,6 +354,7 @@ function protectedPaths(root: string, env: NodeJS.ProcessEnv, extra: string[]) {
     LOCK,
     ".openbot-update-policy.json",
     "docker-compose.override.yml",
+    "docker-compose.override.yaml",
     "compose.override.yaml",
     ".logs",
     ...extra,
@@ -357,7 +363,8 @@ function protectedPaths(root: string, env: NodeJS.ProcessEnv, extra: string[]) {
   if (
     tenantRelative &&
     !tenantRelative.startsWith("..") &&
-    !isAbsolute(tenantRelative)
+    !isAbsolute(tenantRelative) &&
+    !(cleanShippedIPix && tenantRelative === join("config", "ipix"))
   )
     paths.push(tenantRelative);
   return [
@@ -367,6 +374,27 @@ function protectedPaths(root: string, env: NodeJS.ProcessEnv, extra: string[]) {
       ),
     ),
   ];
+}
+/** Only the repository's clean, fully tracked default is release-owned. Any
+ * local extra (including ignored files), special index flags or custom path
+ * keeps the existing collision protection. Explicit customerPaths always win. */
+async function cleanShippedIPixPackage(root: string, run: CommandRunner) {
+  const path = "config/ipix";
+  const tracked = (
+    await run(["git", "ls-files", "-v", "-z", "--", path], {
+      cwd: root,
+    })
+  )
+    .split("\0")
+    .filter(Boolean);
+  const required = ["brand", "agents", "channels", "model", "knowledge"];
+  if (!required.every((name) => tracked.includes(`H ${path}/${name}.yaml`)))
+    return false;
+  if (tracked.some((entry) => !entry.startsWith("H "))) return false;
+  const extras = await run(["git", "ls-files", "--others", "-z", "--", path], {
+    cwd: root,
+  });
+  return extras.length === 0;
 }
 function covers(path: string, protectedPath: string) {
   return path === protectedPath || path.startsWith(`${protectedPath}/`);
@@ -841,6 +869,12 @@ async function inspect(
     await run(
       ["git", "merge-base", "--is-ancestor", head, candidate.source.commit],
       { cwd: root },
+    );
+    plan.protectedPaths = protectedPaths(
+      root,
+      env,
+      options.customerPaths ?? [],
+      await cleanShippedIPixPackage(root, run),
     );
     const changed = (
       await run(

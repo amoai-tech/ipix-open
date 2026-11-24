@@ -8,6 +8,13 @@ Newest first. `Unreleased` is what is on `main` and not yet tagged.
 
 ## Unreleased
 
+### iPix checkout
+
+- Fresh checkout uses the fashion package by default. Clean shipped configuration
+  can be upgraded; local customization remains protected. Compose refuses incomplete
+  tenant packages, and default fashion coworkers no longer offer Bot/skill authoring.
+  Knowledge source hints do not connect accounts.
+
 **Before upgrading.**
 
 - **One migration, expand only.** `0138_management_enrollment` adds one table for connecting to

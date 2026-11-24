@@ -11,7 +11,11 @@ Fintech example. Upstream examples remain unchanged for upgrades and comparison.
   TENANT_PACKAGE_DIR selections (including Desktop's personal package) still win.
   Desktop distributions that do not carry the checkout can mount an empty
   directory; the selected bundled personal package is unaffected. The iPix
-  package itself must contain the required YAML files.
+  package itself must contain the five required, readable, nonempty YAML files;
+  the Compose entrypoint refuses an incomplete selection before starting the server.
+  The updater may replace the clean, fully tracked default package; local modifications,
+  extra files (even ignored ones), explicit protected paths and custom packages retain
+  customer protection.
 - Existing installations: keep your backup, review existing seeded Bots and
   grants, then explicitly change TENANT_PACKAGE_DIR=../config/ipix in .env and
   restart/rebuild the checkout web app. The stable package ID remains openbot.
@@ -31,6 +35,13 @@ Fintech example. Upstream examples remain unchanged for upgrades and comparison.
   Existing pilot installations must verify and remove any previously registered
   Planner and its grants before allowing user access; this package does not
   certify cleanup of existing database state.
+- Neither default coworker is granted bot-creator or skill-creator. Their definitions
+  are retained for explicit authorized operator grants; ordinary fashion conversations
+  do not offer authoring tools. Existing user-edited grants must be checked separately.
+  OpenBot's own user permissions and human confirmation still govern actual writes.
+- Knowledge YAML is validated metadata, not a connected data source. Google Drive
+  and Notion require the person's authorized Connections and applicable Bot grants.
+  OneDrive is not supported by the pinned server; no ingestion is promised.
 - The model and built-in skill instructions retain the upstream supported
   schema; verify the configured credential can access the model at runtime.
 - Rollback: restore the previous TENANT_PACKAGE_DIR and rebuild/restart the

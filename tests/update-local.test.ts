@@ -38,7 +38,7 @@ const EARLIER_COMPOSE = "services:\n  postgres:\n    image: postgres:17\n";
 const SERVER_DOES_THE_WORK_COMPOSE = `x-openbot-scheduled-work: server\n${EARLIER_COMPOSE}`;
 function fixture(
   topology: "host" | "image" = "image",
-  compose: { installed?: string; candidate?: string } = {},
+  compose: { installed?: string; candidate?: string; ipix?: boolean } = {},
 ) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "openbot-update-")));
   roots.push(root);
@@ -52,6 +52,11 @@ function fixture(
     join(root, "docker-compose.yml"),
     compose.installed ?? EARLIER_COMPOSE,
   );
+  if (compose.ipix) {
+    mkdirSync(join(root, "config/ipix"), { recursive: true });
+    for (const name of ["brand", "agents", "channels", "model", "knowledge"])
+      writeFileSync(join(root, "config/ipix", `${name}.yaml`), "old\n");
+  }
   git("add", ".");
   git("commit", "--quiet", "-m", "accepted");
   const old = git("rev-parse", "HEAD");
@@ -60,6 +65,8 @@ function fixture(
     join(root, "docker-compose.yml"),
     compose.candidate ?? compose.installed ?? EARLIER_COMPOSE,
   );
+  if (compose.ipix)
+    writeFileSync(join(root, "config/ipix/brand.yaml"), "new\n");
   git("commit", "--quiet", "-am", "candidate");
   const target = git("rev-parse", "HEAD");
   git("checkout", "--quiet", "--detach", old);
@@ -156,8 +163,63 @@ function fixture(
           }
         : { status: "ok" },
   };
+  if (compose.ipix)
+    writeFileSync(join(root, ".env"), "TENANT_PACKAGE_DIR=../config/ipix\n");
   return { root, git, old, target, candidate, current, calls, run, options };
 }
+
+test("clean shipped iPix config can update with explicit or default selection", async () => {
+  for (const explicit of [true, false]) {
+    const f = fixture("image", { ipix: true });
+    if (!explicit) writeFileSync(join(f.root, ".env"), "");
+    const plan = await planLocalUpdate(f.options);
+    expect(plan.allowed).toBe(true);
+    expect(plan.protectedPaths).not.toContain("config/ipix");
+    expect(plan.protectedPaths).toContain("docker-compose.override.yaml");
+    expect((await applyLocalUpdate(f.options)).phase).toBe("accepted");
+    expect(readFileSync(join(f.root, "config/ipix/brand.yaml"), "utf8")).toBe(
+      "new\n",
+    );
+  }
+});
+
+test("iPix local additions and explicitly protected package refuse release collisions", async () => {
+  for (const reason of [
+    "local extra",
+    "ignored extra",
+    "explicit",
+    "index flag",
+  ]) {
+    const f = fixture("image", { ipix: true });
+    if (reason === "local extra" || reason === "ignored extra") {
+      if (reason === "ignored extra")
+        writeFileSync(
+          join(f.root, ".git/info/exclude"),
+          "config/ipix/local.yaml\n",
+        );
+      writeFileSync(join(f.root, "config/ipix/local.yaml"), "customer\n");
+    }
+    if (reason === "index flag")
+      f.git("update-index", "--assume-unchanged", "config/ipix/brand.yaml");
+    const plan = await planLocalUpdate({
+      ...f.options,
+      customerPaths: reason === "explicit" ? ["config/ipix"] : [],
+    });
+    expect(plan.allowed).toBe(false);
+    expect(plan.reasons.join(" ")).toContain("customer-owned");
+    expect(f.git("rev-parse", "HEAD")).toBe(f.old);
+    expect(f.calls.some((c) => c.includes(" stop "))).toBe(false);
+  }
+});
+
+test("dirty shipped iPix tracked configuration still refuses before mutation", async () => {
+  const f = fixture("image", { ipix: true });
+  writeFileSync(join(f.root, "config/ipix/brand.yaml"), "customer edit\n");
+  const plan = await planLocalUpdate(f.options);
+  expect(plan.allowed).toBe(false);
+  expect(plan.reasons.join(" ")).toContain("Locally modified tracked source");
+  expect(f.git("rev-parse", "HEAD")).toBe(f.old);
+});
 
 test("local plan detects committed baseline divergence without touching the checkout", async () => {
   const f = fixture();
@@ -522,7 +584,11 @@ test("image apply onto a release whose server migrates and sweeps for itself run
   expect(up).toBeGreaterThan(removal);
   expect(f.calls.filter((c) => c.startsWith("docker rm "))).toHaveLength(1);
   expect(
-    f.calls.some((c) => c.includes("--volumes") || c.includes(" -v")),
+    f.calls.some(
+      (c) =>
+        c.startsWith("docker ") &&
+        (c.includes("--volumes") || c.includes(" -v")),
+    ),
   ).toBe(false);
 });
 

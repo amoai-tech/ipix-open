@@ -1,6 +1,6 @@
-# Source hints only: these do not connect apps or grant access.
+# Required loader metadata only; the pinned server validates but does not read sources.
+# Google Drive / Notion require each person's authorized Connections and Bot grants.
+# OneDrive has no connector in this version and is deliberately not advertised.
 sources:
   - type: google-drive
     roots: [Brand Guidelines, Creative Briefs, Production]
-  - type: microsoft-onedrive
-    roots: [Brand Guidelines, Campaigns]

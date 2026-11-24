@@ -84,7 +84,24 @@ services:
     # The server, and nothing else in the image: the executable and its command, from the directory
     # the server reads its migrations from. Naming the entrypoint drops the image's own, and with it
     # everything else the image would have started.
-    entrypoint: ["/app/bin/openbot", "server"]
+    # Fail before starting the packaged server if its selected tenant package is missing.
+    # This also works for Desktop's bundled personal package, without a checkout mount.
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        for file in brand agents channels model knowledge; do
+          path="$${TENANT_PACKAGE_DIR}/$$file.yaml"
+          if [ ! -f "$$path" ] || [ ! -r "$$path" ] || [ ! -s "$$path" ]; then
+            message="Missing or unreadable tenant package file: $$path"
+            printf '%s\n' "$$message" >&2
+            if [ -n "$${OPENBOT_REFUSAL_FILE:-}" ]; then
+              printf '%s\n' "$$message" > "$$OPENBOT_REFUSAL_FILE" || true
+            fi
+            exit 78
+          fi
+        done
+        exec /app/bin/openbot server
     working_dir: /app/server
     # The deployment's settings, `.env`. Optional, because `docker compose config` and a first start
     # both come before anything wrote it. `scripts/start.sh` names a file of its own instead, `.env`

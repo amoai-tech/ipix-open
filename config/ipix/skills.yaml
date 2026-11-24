@@ -100,6 +100,7 @@ skills:
   # Declares no tools, and should not. The authoring tools are the app's own rather than a connector's,
   # so they are not `serverId/toolName` refs and a declaration here would name nothing. Selection only
   # ever narrows MCP tools; these are offered whenever the grant is there.
+  # Authoring definitions remain available for explicit operator grants; no default iPix Bot holds them.
   - slug: skill-creator
     title: Write a skill
     summary: Interview me about a skill I want, then write it and save it as a new skill.
