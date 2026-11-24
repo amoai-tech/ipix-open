@@ -1,27 +1,31 @@
 ---
 name: mastra
-description: Use for connecting or reviewing the remote iPix Mastra Production Planner through OpenBot, including agent discovery, auth, HITL, streaming, stop/retry and durable approvals; not for edits to the bundled OpenBot agent-mastra harness.
+description: "Use when migrating or reviewing the iPix fashion Production Planner, its tools/workflows, trusted identity, HITL, stream/stop/resume, or AG-UI integration inside standalone ipix-open; do not auto-trigger for unrelated maintenance of the bundled Mastra demo harness."
 ---
 
-# Mastra — iPix → OpenBot
+# Mastra — migrate the real iPix Production Planner into OpenBot
 
-**Source — ADAPT:** https://github.com/amoai-tech/ipixai/blob/13bf2af385ebbe68a78c652daf5cffa3db95df24/.agents/skills/mastra/SKILL.md
+**Source — ADAPT:** https://github.com/amoai-tech/ipixai/tree/13bf2af385ebbe68a78c652daf5cffa3db95df24/src/mastra
 
-## OpenBot boundaries
-- Inspect the current Bun monorepo, installed packages and relevant existing OpenBot code first. Do not copy iPix Next.js routes, paths, transport, environment secrets, or deployment assumptions.
-- Keep `openbot-copy`, `openbot-data-access`, and `openbot-screen-layout` authoritative for user-facing copy, browser API operations and configuration-screen layout.
-- iPix owns domain data in Supabase and its Mastra Planner; OpenBot connects through its supported authenticated agent/API interfaces.
-- Never trust a browser-supplied organization, user, thread or run ID as authorization. Human approval plus server-side revalidation and idempotent execution are mandatory for consequential actions.
+**Target:** Standalone `ipix-open`, under [owner-directed PR #3](https://github.com/amoai-tech/ipix-open/pull/3) (unmerged at the 2026-11-23 review checkpoint; verify current state). The legacy `ipixai` runtime is migration source **only**, not a service that the completed app calls. Follow [shared boundaries](../README-ipix.md#architecture-status-and-ownership).
 
-## Remote Planner integration
-Scope: the remote iPix Planner integration only. OpenBot also ships `agent-mastra/`; edits to that bundled harness require its own installed Mastra types and harness contracts, not these remote-Planner assumptions.
-1. Locate the existing iPix Production Planner and verify its currently installed Mastra types, authentication endpoint and server-side identity contract.
-2. Prefer OpenBot's native remote agent/AG-UI connection; do not install a duplicate Mastra runtime, invent transport or create another run registry.
-3. Keep tools as read/compute/propose until a server-approved exact action is authorized.
-4. Verify active org through iPix server membership; browser identifiers are hints, never authority.
-5. Handle stream errors, stop/retry, resume, stale approval and idempotent saves with persistent evidence.
-6. Do not log secrets or tenant payloads in model-visible traces. Check https://mastra.ai/docs and https://docs.copilotkit.ai/mastra only after installed types.
-## Example
-A Bot requests a structured 24-shot plan from the remote Planner; an operator edits two shots, approves, and iPix saves exactly the edited artifact.
-## Verify
-Authenticated stream, reject, double-click approval, cancellation, restart, Org A/Org B denial and durable reread.
+## First inspect the native harness
+
+- `agent-mastra/src/mastra/index.ts` — the **existing bundled Mastra example**, plain Mastra server. It documents the `@ag-ui/mastra` bridge; it does **not** mount a generic AG-UI route.
+- `shared/harnesses.ts` → `reachedThroughMastra()` — current native framework detection and remote agent discovery rules.
+- `server/src/copilot.ts` is referenced in the harness comment, but the packaged server source is **absent from this checkout**. Do not invent its auth/transport behavior; verify against the shipped interface or runtime.
+
+## Migration procedure
+
+1. Inspect the legacy Planner dependency closure, current installed `@mastra/core` and Bun compatibility. **COPY+CLEAN** pure planning logic; **ADAPT** auth, imports, storage, workflow persistence and platform-specific code; **DROP** obsolete Next.js routes and duplicate transports.
+2. Evaluate `agent-mastra/src/mastra/` as the first destination. If its installed dependencies/packaged runtime cannot host the migrated Planner, document the conflict and use one separately deployed iPix service **inside the same repository**, not a legacy-repo network dependency.
+3. Default-deny tools. Start with planning and authorized reads; do not expose computer/shell, broad MCP, publish/pay/delete, or writes on model request.
+4. Verify **per-user** Supabase identity and current membership at the trusted server. Never treat OpenBot session, model text, browser orgId, or shared agent token as business authorization.
+5. Before any test run, prove a nonproduction Supabase target **and isolated Mastra memory**; synthetic requests can still create threads/working-memory rows. Stop if the storage boundary is uncertain.
+6. Retain exact revised-artifact approval, durable suspend/resume, reauthorization on retry, cancellation/Stop, idempotent save and readback. Use existing domain security tests, adapting runners to this repo and installed versions.
+
+**Example:** A synthetic producer proposes a six-outfit shoot; they edit shot 3, reject one suggestion and approve the final revision. One authorized QA shoot is saved and visible after restart; rejection makes no write.
+
+**Verify:** Static imports/types → focused Planner tests → isolated QA identity/RLS → streamed edit/reject/approve → Stop/retry/suspend/resume → tenant A/B denial → one durable readback. Do not claim migration complete from a diagram or docs.
+
+For source-by-source migration mapping and STOP checks, read [references/planner-migration.md](references/planner-migration.md) before implementing.

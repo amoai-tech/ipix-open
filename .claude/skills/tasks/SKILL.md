@@ -8,18 +8,17 @@ description: Use to plan OpenBot/iPix implementation work and Linear tickets wit
 **Source — ADAPT:** https://github.com/amoai-tech/ipixai/blob/13bf2af385ebbe68a78c652daf5cffa3db95df24/.agents/skills/tasks/SKILL.md
 
 ## OpenBot boundaries
-- Inspect the current Bun monorepo, installed packages and relevant existing OpenBot code first. Do not copy iPix Next.js routes, paths, transport, environment secrets, or deployment assumptions.
-- Keep `openbot-copy`, `openbot-data-access`, and `openbot-screen-layout` authoritative for user-facing copy, browser API operations and configuration-screen layout.
-- iPix owns domain data in Supabase and its Mastra Planner; OpenBot connects through its supported authenticated agent/API interfaces.
-- Never trust a browser-supplied organization, user, thread or run ID as authorization. Human approval plus server-side revalidation and idempotent execution are mandatory for consequential actions.
+- Follow [standalone iPix Open ownership](../README-ipix.md#architecture-status-and-ownership). The legacy `ipixai` repository supplies **migration references, not final live APIs**; architecture PR #3 is still unmerged.
+- Verify installed Bun/React/Vite code first. Respect the original `openbot-copy`, `openbot-data-access` and `openbot-screen-layout` skills. Do not copy old Next.js routes, secrets, or transports.
+- Never use browser/model org, user, thread or run IDs as authority. Consequential actions require exact human approval, server-side tenant checks and idempotent durable readback.
 
 ## Planning workflow
-1. Describe the real user outcome and starting screen. Inspect live Linear task, dependencies, active PRs, both repo heads and current behavior.
-2. Read relevant repo engineering contracts. Reuse OpenBot functionality, current iPix Planner and official SDK features before custom work.
+1. Describe the real user outcome and starting screen. Inspect live Linear task, dependencies, active PRs, **current `ipix-open` head**, and proposed architecture PR #3. Treat the legacy `ipixai` head as source material, not an implementation destination.
+2. Read existing repo engineering contracts. Reuse OpenBot functionality, **migrate proven Planner logic only as needed**, and verify official installed SDK features before custom work.
 3. For each step record: destination file → exact source URL/file → COPY/ADAPT/REFERENCE ONLY → use → do not copy → change → verify.
 4. State data ownership, authorization, human approval, failure/retry behavior, acceptance criteria, cheap tests and real user-journey evidence.
-5. Update Linear only after observable proof. One bounded concern per PR.
+5. Follow acceptance → implementation → focused test → independent review → exact-head CI → owner merge → post-merge readback. Update Linear to Done **only** after applicable evidence; one bounded concern per PR.
 ## Example
-Task: 'OpenBot user gets an editable plan from iPix without a second Mastra runtime.' Gate: authenticated stream, human approval, one durable save and cross-org denial.
+Task: 'The new `ipix-open` app gets an editable plan from the **migrated** iPix Planner without depending on the legacy service.' Gate: authorized QA stream, human approval, one durable save and cross-org denial.
 ## Verify
 Check task criteria against specific files, test command output, CI SHA, approved preview journey and rollback.

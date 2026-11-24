@@ -15,7 +15,7 @@ description: "Use when designing, auditing, or redesigning iPix Open screens, us
 
 - Inspect the current OpenBot React/Vite routes, components, design patterns, OpenAPI client and applicable running behavior. Do not assume iPix Next.js App Router, Supabase tables, Mastra endpoints, or design paths exist here.
 - Reuse existing OpenBot UI first. Follow `openbot-screen-layout` for screen structure, `openbot-copy` for wording, `openbot-data-access` for browser/API integration, and `copilotkit` for agent surfaces.
-- iPix's Supabase business data and Cloudinary assets belong to the iPix application. Draw the API/agent boundary explicitly; never invent accessible fields, endpoints, or permissions.
+- The target iPix app is **this `ipix-open` repository**. Business truth is Supabase, media Cloudinary, and OpenBot has its own workspace state. Do not design a runtime link to legacy `ipixai`; PR #3's standalone ADR is still unmerged. [Shared contract](../README-ipix.md#architecture-status-and-ownership).
 - AI proposes; the operator reviews or edits; the server reauthorizes the **exact approved artifact** before any consequential write; idempotent execution and durable readback establish success.
 - Use Figma or clickable prototypes only where visual parity or interaction testing adds value. ASCII is the default for quick engineering collaboration.
 
@@ -52,7 +52,7 @@ Mobile: stacked proposal → preview → sticky actions
 ## 4. Specify the implementation contract
 
 For each meaningful screen/state provide:
-- **Reuse map:** existing file/component → reuse / adapt / create / defer.
+- **Reuse map:** existing file/component → reuse / adapt / create / defer. For configuration screens start with `PageShell` / `PageSection` / `PageRows`; for AI cards start with `app/src/lib/copilot/a2ui.ts` → `OPENBOT_UI` and the gallery registry. Do not wrap chat/gallery as a configuration screen.
 - **Data:** precise API/schema source, nullable/empty fields, read/write ownership; label unknowns **unverified**.
 - **State matrix:** loading, ready, empty, error, proposed, reviewing, approved/rejected, saving, saved, retry.
 - **AI and approval:** exact artifact identity/version, permission check on server, failure path and idempotency expectations.

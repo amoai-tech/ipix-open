@@ -20,7 +20,7 @@ Graphify builds/query persistent knowledge graphs of code and documents. It is r
 
 ## Example
 
-To trace the Mastra bridge: locate `shared/harnesses.ts`, the registered agent creation flow, server authorization boundary, streaming integration and tests; verify each call edge in code before editing.
+To plan Planner migration: trace `agent-mastra/src/mastra/index.ts` and `shared/harnesses.ts` in **this repo**, then inspect pinned legacy Planner imports as **source-only**. Confirm auth/stream boundaries with installed code; never infer packaged backend behavior from absent `server/src`.
 
 ## Safety and verification
 

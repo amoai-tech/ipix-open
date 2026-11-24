@@ -13,7 +13,7 @@ Apply React optimization guidance **selectively** to the installed OpenBot React
 
 ## Prioritized performance pass
 
-1. **Measure first.** Name the slow UI and gather network waterfall, browser profile/render counts, Vite build chunk size or repeatable interaction.
+1. **Measure first.** Name the slow UI and gather a before/after network waterfall, browser profile/render counts, Vite build chunk size or repeatable interaction, using the same route/device/data.
 2. **Eliminate waterfalls:** parallelize independent work where safe, but keep OpenBot's generated API client and TanStack Query factories (`openbot-data-access`), org-aware caching and error handling.
 3. **Reduce bundles:** follow existing Vite route splitting/dynamic `import()`; measure before/after.
 4. **Limit rerenders:** derive state, use correct keys, scope subscriptions, memoize only measured expensive computation.

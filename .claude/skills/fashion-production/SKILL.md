@@ -8,10 +8,9 @@ description: Use for fashion shoot briefs, shot lists, lighting plans, call shee
 **Source — ADAPT:** https://github.com/amoai-tech/ipixai/blob/13bf2af385ebbe68a78c652daf5cffa3db95df24/.agents/skills/fashion-production/SKILL.md
 
 ## OpenBot boundaries
-- Inspect the current Bun monorepo, installed packages and relevant existing OpenBot code first. Do not copy iPix Next.js routes, paths, transport, environment secrets, or deployment assumptions.
-- Keep `openbot-copy`, `openbot-data-access`, and `openbot-screen-layout` authoritative for user-facing copy, browser API operations and configuration-screen layout.
-- iPix owns domain data in Supabase and its Mastra Planner; OpenBot connects through its supported authenticated agent/API interfaces.
-- Never trust a browser-supplied organization, user, thread or run ID as authorization. Human approval plus server-side revalidation and idempotent execution are mandatory for consequential actions.
+- Follow [standalone iPix Open ownership](../README-ipix.md#architecture-status-and-ownership). The legacy `ipixai` repository supplies **migration references, not final live APIs**; architecture PR #3 is still unmerged.
+- Verify installed Bun/React/Vite code first. Respect the original `openbot-copy`, `openbot-data-access` and `openbot-screen-layout` skills. Do not copy old Next.js routes, secrets, or transports.
+- Never use browser/model org, user, thread or run IDs as authority. Consequential actions require exact human approval, server-side tenant checks and idempotent durable readback.
 
 ## Shoot production
 1. Gather approved Brand DNA, products, target channels, date, budget and creative constraints; mark unknown inputs.
@@ -21,6 +20,7 @@ description: Use for fashion shoot briefs, shot lists, lighting plans, call shee
 5. Show budget assumptions separately from confirmed quotes; never invent vendor availability.
 6. Separate drafts from approved shoots. No bookings, spend, publishing or durable saves without explicit approval.
 7. After shooting, map captured assets to shots, flag missing deliverables and explain reshoots.
+8. Use [references/shot-list-template.md](references/shot-list-template.md) for a deliverable-ready plan, not for a quick answer. Ensure every proposed shot maps to a target channel and approved version.
 ## Example
 Maaji-style swimwear: plan 24 shots across studio and beach setups; compare e-commerce crops with social hero frames and note schedule risks.
 ## Verify

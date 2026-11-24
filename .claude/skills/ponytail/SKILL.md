@@ -23,7 +23,7 @@ For bugs, trace callers and fix the **root cause** at the shared layer rather th
 ## OpenBot guardrails
 
 - OpenBot is a Bun/React/Vite application, not iPix Next.js. Respect `openbot-data-access`, `openbot-screen-layout` and `openbot-copy`.
-- Do not invent a second Mastra runtime, AG-UI transport, API client, database or run registry.
+- Prefer the bundled Mastra service/AG-UI bridge; if migration dependencies prove incompatible, the standalone architecture allows a narrowly justified iPix service **in this repo**, never a legacy runtime call. Do not invent another API client, business database or run registry.
 - Never cut tenant authorization, exact human review, idempotent writes, data-loss safeguards, error recovery, accessibility or mandatory evidence.
 - `tasks` owns workflow and proof; domain skills own domain correctness.
 

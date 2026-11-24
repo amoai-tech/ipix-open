@@ -14,7 +14,7 @@ Use for substantial structural migrations, not simple one-file bugs. During plan
 1. Describe the current and target user behavior. Inspect real code, callers, generated OpenAPI client, tests, CI and open PRs.
 2. Use `graphify` when an existing graph or complex dependency network makes it worthwhile; otherwise search narrowly.
 3. Apply `ponytail`: prefer reuse and the smallest compatible change.
-4. List exact affected files, contracts, external dependencies and data ownership (OpenBot Postgres/API versus iPix Supabase/Mastra).
+4. List exact affected files, contracts, external dependencies and data ownership (OpenBot workspace Postgres versus **standalone `ipix-open`** domain Supabase/migrated Mastra). Legacy `ipixai` must not remain a runtime dependency.
 5. Plan phases in safe order: expand interfaces → implement → migrate callers/data → verify → remove obsolete paths. Include old/new coexistence where needed.
 6. For each phase state file, specific change, source/reuse, test, observable checkpoint, STOP condition and rollback.
 7. Protect authentication, tenant separation, approval/revision matching, retry idempotency and reliable error handling.

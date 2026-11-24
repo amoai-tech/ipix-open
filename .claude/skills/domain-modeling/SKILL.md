@@ -8,10 +8,9 @@ description: Use to clarify Brand, Campaign, Shoot, Shot, Asset, Bot, Agent, Dra
 **Source — ADAPT:** https://github.com/amoai-tech/ipixai/blob/13bf2af385ebbe68a78c652daf5cffa3db95df24/.agents/skills/domain-modeling/SKILL.md
 
 ## OpenBot boundaries
-- Inspect the current Bun monorepo, installed packages and relevant existing OpenBot code first. Do not copy iPix Next.js routes, paths, transport, environment secrets, or deployment assumptions.
-- Keep `openbot-copy`, `openbot-data-access`, and `openbot-screen-layout` authoritative for user-facing copy, browser API operations and configuration-screen layout.
-- iPix owns domain data in Supabase and its Mastra Planner; OpenBot connects through its supported authenticated agent/API interfaces.
-- Never trust a browser-supplied organization, user, thread or run ID as authorization. Human approval plus server-side revalidation and idempotent execution are mandatory for consequential actions.
+- Follow [standalone iPix Open ownership](../README-ipix.md#architecture-status-and-ownership). The legacy `ipixai` repository supplies **migration references, not final live APIs**; architecture PR #3 is still unmerged.
+- Verify installed Bun/React/Vite code first. Respect the original `openbot-copy`, `openbot-data-access` and `openbot-screen-layout` skills. Do not copy old Next.js routes, secrets, or transports.
+- Never use browser/model org, user, thread or run IDs as authority. Consequential actions require exact human approval, server-side tenant checks and idempotent durable readback.
 
 ## Shared glossary
 - **Bot:** OpenBot user-facing entity; **Agent:** execution component such as external Mastra Planner, not a synonym for Bot.
@@ -20,6 +19,6 @@ description: Use to clarify Brand, Campaign, Shoot, Shot, Asset, Bot, Agent, Dra
 - **Shot:** planned capture, not necessarily an image; **Asset:** captured/generated media record with approval and media reference.
 - **Draft:** uncommitted proposal; **Approval:** specific human decision; **Commit:** server-authorized durable mutation.
 ## Method
-Cross-check terminology against real iPix schemas, endpoints and OpenBot's `openbot-copy`. Clarify overlapping words with examples; don't create migrations or glossaries without an actual requirement.
+Cross-check terminology against migrated/verified `ipix-open` schemas, approved legacy business contracts and `openbot-copy`. For a disputed word: describe an actual example → name the competing definitions → identify the owning data field and user-visible label → record one agreed decision. Do not invent migrations to rename concepts.
 ## Example
-A 24-shot plan produces 18 usable assets: there are 24 planned Shots and 18 Assets, not 24 automatically created images.
+A 24-shot plan produces 18 usable assets: there are 24 planned Shots and 18 Assets, not 24 automatically created images. Record which status is planned, captured, selected and approved before computing completion.

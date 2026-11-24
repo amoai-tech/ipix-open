@@ -12,7 +12,7 @@ Use the **one smallest useful diagram** for a substantial task. Add another only
 ## Choose the diagram
 
 - `flowchart`: journey, responsibilities, decisions and fallback.
-- `sequenceDiagram`: browser → OpenBot → external iPix agent/API → storage calls, order and failures.
+- `sequenceDiagram`: browser → OpenBot → **migrated iPix Planner/service inside `ipix-open`** → Supabase/Cloudinary, order and failures (proposed until proven).
 - `stateDiagram-v2`: proposal, review, reject, approval, resume and expiry.
 - `erDiagram`: real verified data relationships and ownership.
 - `journey`: operator experience, not authorization proof.
@@ -20,7 +20,7 @@ Use the **one smallest useful diagram** for a substantial task. Add another only
 
 ## Verify before drawing
 
-1. Inspect OpenBot's actual Bun/React routes, shared API contract, harness and agent integration; consult iPix files only for iPix-owned behavior.
+1. Inspect actual `ipix-open` routes, shared API contract and harness; consult legacy `ipixai` only as migration source. Follow the unmerged standalone architecture decision in PR #3, clearly distinguishing target from implemented behavior.
 2. Label **current**, **proposed** and **unverified** nodes distinctly. Do not invent a Supabase write route, CopilotKit/Mastra API or deployment.
 3. Model trusted server authorization of organization, resource and actor. A browser ID or agent output is not authority.
 4. For consequential actions draw **proposal → human review → server validation of exact approved artifact/revision → idempotent write → durable readback**.

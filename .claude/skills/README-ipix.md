@@ -1,17 +1,41 @@
-# iPix developer skills for OpenBot
+# iPix developer skills in OpenBot
 
-Fifteen adapted skills from [iPix source](https://github.com/amoai-tech/ipixai/tree/main/.agents/skills) (initial ten based on commit `13bf2af385ebbe68a78c652daf5cffa3db95df24`). These are **developer-time instructions**, not runtime Bot tools or proof of a production Mastra/Planner integration.
+These are **developer-time Claude Code instructions**, not runtime Bot tools, deployed integrations, or evidence that the Planner works. Preserve OpenBot's three original skills: `openbot-copy` (user-facing wording), `openbot-data-access` (browser/server API), and `openbot-screen-layout` (configuration screens). Their contracts take priority over copied legacy examples.
 
-**Added:** fashion-production, mastra, ipix-supabase, copilotkit, tasks, task-verifier, cloudinary, mermaid-diagrams, domain-modeling, qa-review, ipix-wireframe, **ponytail**, **refactor-plan**, **graphify**, **vercel-react-best-practices**.
+## Architecture status and ownership
 
-**Preserved:** openbot-copy, openbot-data-access, openbot-screen-layout. The existing three remain authoritative for their respective OpenBot UI/behavior boundaries.
+**Target direction, not deployed behavior:** [IPI-1489 architecture PR #3](https://github.com/amoai-tech/ipix-open/pull/3) directs a **standalone iPix application inside `ipix-open`**. At the 2026-11-23 review checkpoint PR #3 was unmerged; **recheck its current state and approved ADR before coding**, rather than assuming either that the migration exists or the PR is still pending. The old [`ipixai` repo](https://github.com/amoai-tech/ipixai) is a **COPY / ADAPT / REFERENCE ONLY migration source**, never a final runtime API or dependent service. Do not silently assume a proposed migration already exists.
 
-The source's extensive Next.js-specific references, long Graphify orchestration scripts, and 72-rule Vercel pack are intentionally not copied. Add only task-relevant, verified support material. `ipix-wireframe` includes one compact engineering checklist; `mermaid-diagrams` is improved in place, not duplicated.
+| Responsibility | Target owner / guard |
+| --- | --- |
+| Browser, conversation, UI, developer skills | Existing OpenBot React/Vite + CopilotKit v2 entry points in `ipix-open` |
+| Bundled agent harness and migrated Production Planner | `ipix-open` Mastra service(s); check compatibility before porting, no duplicate framework by default |
+| Workspace conversations and infrastructure | OpenBot Postgres/Intelligence, **separate** from iPix business data |
+| Brands, shoots, assets, approvals, roles | Supabase Auth/Postgres with server authorization and RLS |
+| Images and transformations | Cloudinary; authorized iPix metadata and brand links live in Supabase |
+| Current production `ipixai` | Legacy running system remains untouched until a separately approved cutover |
 
-**Additional routing:** `ponytail` picks the smallest safe change; `refactor-plan` plans multi-file migrations; `graphify` traces complex relationships; `vercel-react-best-practices` addresses measured React/Vite performance bottlenecks.
+**QA STOP:** Before any Planner call, select an approved *nonproduction* Supabase project with matching Auth issuer/audience, business database, and storage. Isolate **Mastra memory/workflow storage** and Cloudinary credentials too. Synthetic inputs alone do not prevent production memory writes. No actual customer data or existing production service keys in QA.
 
-**Skill usage:** `ipix-wireframe` for buildable screen/UI contracts; `mermaid-diagrams` for the smallest meaningful cross-service diagram. They share a journey but do not replace implementation or approval verification.
+**Approval STOP:** AI proposes → human edits/reviews exact revision → server verifies current actor, tenant, resource, version and permission → one idempotent write → durable readback. Reauthorize on resume/retry; do not trust browser org/user/thread/run IDs, model text, OpenBot session alone, or a shared service token as the iPix actor.
 
-Authoring: [Anthropic's skill best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices). Diagram syntax: [Mermaid](https://mermaid.js.org/intro/syntax-reference).
+**Source priority:** Current `ipix-open` main + installed package/types → live tests/runtime → pinned upstream documentation → owner-directed PR #3 (until merged) → legacy migration source. Record conflicts instead of quietly copying Next.js code.
 
-**Test prompts:** (1) Wireframe a campaign review on 390px mobile with missing fields; (2) Diagram rejected vs approved proposal without a tenant-auth bypass; (3) Plan a 24-shot fashion campaign; (4) Prove cross-organization access and double approval are rejected.
+## Skills and boundaries
+
+The **15 adapted** skills are: `mastra`, `copilotkit`, `ipix-supabase`, `cloudinary`, `fashion-production`, `tasks`, `task-verifier`, `qa-review`, `domain-modeling`, `ipix-wireframe`, `mermaid-diagrams`, `ponytail`, `refactor-plan`, `graphify`, `vercel-react-best-practices`.
+
+- **Planning:** `tasks` handles Linear/PR lifecycle; `refactor-plan` handles breaking migrations; `ponytail` checks whether new complexity is necessary; `graphify` traces broad dependencies.
+- **Product/design:** `domain-modeling` defines terms; `fashion-production` specifies shoot deliverables; `ipix-wireframe` defines buildable screens; `mermaid-diagrams` models important states/boundaries.
+- **Implementation:** `mastra` owns migrated Planner guidance; `copilotkit` owns interactive agent presentation; `ipix-supabase` owns auth/data rules; `cloudinary` owns media integration; `vercel-react-best-practices` optimizes measured React/Vite behavior.
+- **Quality:** `qa-review` finds all evidence-backed risks and proposes up to five high-value tests; `task-verifier` independently proves applicable Done criteria.
+
+Use the smallest relevant skill, and consult another only for a real cross-domain gap. Do not load every skill just because the request mentions iPix.
+
+## Source and evaluation rules
+
+- Inspect the **installed package and actual file** before using official examples. Every external implementation reference must map to the destination, COPY / ADAPT / REFERENCE ONLY, the incompatible part to avoid, and a test.
+- Keep main `SKILL.md` small; load specific `references/` only when necessary. Do not copy huge Next.js guides or Graphify orchestration into this Vite/Bun repo.
+- For a quick sketch do not load the full wireframe checklist; load it for implementation-ready handoffs.
+- The [focused routing examples](evals/critical-routing.json) include should-trigger and near-miss should-not-trigger cases. They are **fixtures, not proof of real Claude activation**. Follow [the evaluation procedure](evals/README.md) before claiming a skill reliably activates or improves results.
+- Authoring: [official Anthropic Skill Creator](https://github.com/anthropics/claude-plugins-official/blob/main/plugins/skill-creator/skills/skill-creator/SKILL.md) and [Claude Code skills documentation](https://code.claude.com/docs/en/skills).

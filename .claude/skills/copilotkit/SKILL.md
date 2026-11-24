@@ -1,26 +1,35 @@
 ---
 name: copilotkit
-description: "Use for OpenBot CopilotKit v2 and AG-UI: remote agent rendering, streamed proposals, editable shot cards and human review."
+description: "Use for OpenBot's CopilotKit v2-entrypoint agent UI: streamed AI proposals, OPENBOT_UI/A2UI components, interactive shot cards and tables, gallery rendering and exact human review. Inspect existing React/Vite code before adding a renderer."
 ---
 
-# Copilotkit — iPix → OpenBot
+# CopilotKit — reuse existing OpenBot generative UI
 
 **Source — ADAPT:** https://github.com/amoai-tech/ipixai/blob/13bf2af385ebbe68a78c652daf5cffa3db95df24/.agents/skills/copilotkit/SKILL.md
 
-## OpenBot boundaries
-- Inspect the current Bun monorepo, installed packages and relevant existing OpenBot code first. Do not copy iPix Next.js routes, paths, transport, environment secrets, or deployment assumptions.
-- Keep `openbot-copy`, `openbot-data-access`, and `openbot-screen-layout` authoritative for user-facing copy, browser API operations and configuration-screen layout.
-- iPix owns domain data in Supabase and its Mastra Planner; OpenBot connects through its supported authenticated agent/API interfaces.
-- Never trust a browser-supplied organization, user, thread or run ID as authorization. Human approval plus server-side revalidation and idempotent execution are mandatory for consequential actions.
+**Target architecture:** [standalone iPix Open migration](../README-ipix.md#architecture-status-and-ownership). Existing UI lives in this repo; legacy `ipixai` UI is source-only.
 
-## Generative interface
-1. Inspect OpenBot's existing `@copilotkit/react-core`, `@ag-ui/core`, runtime and gallery component usage; use pinned package types.
-2. Keep the existing Bot conversation surface. Prefer native message/card components; create a renderer only if the actual Planner result needs it.
-3. Stream partial, pending, completed, failed and reconnected states without claiming a draft has been saved.
-4. Render an editable proposal (e.g. shot list) and let user approve, revise or reject.
-5. Route approved exact data through the authenticated server, not direct browser writes; revalidate organization and idempotency.
-6. OpenBot copy/layout/data-access skills override old iPix patterns. Official: https://docs.copilotkit.ai/mastra
-## Example
-A 24-row shoot plan streams into chat. A producer edits a lighting row; the saved record contains the edit, not a stale model draft.
-## Verify
-Streaming, editing, rejection, reconnect, auth expiry, duplicate approval and data read-back.
+## Installed-version rule
+
+OpenBot's manifest pins `@copilotkit/react-core@1.88.0` and `@ag-ui/core@1.0.2`; its **actual source uses the v2 entry points** `@copilotkit/react-core/v2` and `@copilotkit/react-core/v2/generative-ui`. Inspect the installed exports and code first; neither package's numeric version alone nor an iPix v2 example proves API compatibility.
+
+| Need | Reuse first (real source path / symbol) |
+| --- | --- |
+| Authenticated conversation | `app/src/lib/copilot/provider.tsx` → `CopilotProvider`, relative `/api/copilotkit`, credentials and organization header |
+| Standard cards/table/text/form | `app/src/lib/copilot/a2ui.ts` → `OPENBOT_UI`, `createGenerativeUI`, `standardUI` |
+| Specialized image/gallery | `app/src/lib/copilot/gallery-registry.ts` and `gallery-tools.tsx` |
+| Read-only tool display | `app/src/lib/copilot/handoff-tool.tsx` |
+| Computer-step review | `app/src/lib/copilot/approval-tools.tsx` → `InlineApproval`; **not proof** of iPix business approval |
+| Browser data and layout | `openbot-data-access` and `openbot-screen-layout` (configuration screens only) |
+
+## Workflow
+
+1. Verify the proposed result schema, current UI surface, capabilities, and component grants. Reuse `OPENBOT_UI`/native cards before designing a custom renderer or editing the global provider.
+2. Preserve partial, completed, failed, retry and reconnect states. Render **proposed ≠ persisted**; user edits must survive streaming and refresh where supported.
+3. Make a specialized editable shot list only if native components cannot express the required edit/review experience. Separate rendering from authorization.
+4. For consequential actions, route the **exact approved revision** to an authenticated iPix server path in this repo; verify Supabase membership and idempotency. Do not reuse computer-step `InlineApproval` as a substitute for domain approval without proving the contract.
+5. Do not create a parallel CopilotKit provider, duplicate query cache, unsafe direct browser Supabase write, or copied Next.js components. Verify behavior against installed types and [official v2 docs](https://docs.copilotkit.ai/reference/v2).
+
+**Example:** A producer edits row 3 in a generated six-outfit shoot plan. The UI sends that exact revision for authorized review; it never declares the model's earlier text saved.
+
+**Verify:** Existing chat still works; native gallery/cards render; streaming edits survive; reject=0 writes; approve once=1 persisted result; expired identity and cross-tenant cases refuse safely.
