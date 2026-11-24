@@ -1,13 +1,13 @@
 /**
- * Contributor CI goes second (.github/workflows/contributor-ci.yml, every five minutes).
+ * Upstream-only manual contributor CI recovery. The Contributor CI workflow's yield job is
+ * guarded by github.repository == 'CopilotKit/OpenBot', so it is skipped in the iPix fork.
  *
- * CI from a pull request opened from a fork runs on the shared standard runners, one run at a time
- * (CI's and Desktop's `concurrency` put every fork run in one group). When CopilotKit's own runs (a
- * branch of this repository, or main) have a job waiting for a runner, this cancels the fork runs in
- * progress or queued and says so on each pull request, once. When nothing of CopilotKit's is waiting
- * and no fork run of that workflow is active, it re-runs the oldest fork run that was cancelled on its
- * pull request's current commit and has not run since, one per workflow at a time, so they drain one
- * after another. That also picks up a fork run GitHub dropped from the shared group's pending slot.
+ * A maintainer dispatch with dry_run disabled cancels active fork runs of the watched workflows
+ * while a CopilotKit job has waited for a runner longer than WAIT_MINUTES, and comments once per
+ * cancelled run. Otherwise, each dispatch re-runs at most one eligible cancelled run per watched
+ * workflow with no active contributor run: the oldest run created within the last 24 hours,
+ * on an open pull request's current commit, which has not run again. Another manual dispatch
+ * is required to continue draining the queue; nothing resumes automatically.
  *
  * Usage: bun scripts/contributor-ci.ts [--dry-run]
  *
@@ -258,7 +258,7 @@ if (import.meta.main) {
       "POST",
       `repos/${repository}/issues/${number}/comments`,
       "-f",
-      `body=${marker}\nCI for this pull request is paused while the team needs the runners. It will re-run on its own once they are free, and nothing is needed from you. Thanks for your patience.`,
+      `body=${marker}\nCI for this pull request is paused while the team needs the runners. A maintainer must manually run the Contributor CI workflow with dry_run disabled once runners are free. Runs older than 24 hours are not re-run by that workflow. Thanks for your patience.`,
     ]);
   }
   for (const run of result.rerun) {

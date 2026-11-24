@@ -228,7 +228,7 @@ jobs:
         platform:
           # The 16-core larger runner: these builds are CPU-bound, and a release waits on them.
           - arch: amd64
-            runner: openbot-ubuntu-16core
+            runner: ubuntu-latest
           - arch: arm64
             runner: ubuntu-24.04-arm
     steps:
