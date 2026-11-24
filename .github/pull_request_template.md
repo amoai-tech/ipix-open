@@ -85,21 +85,7 @@ Use a separate diagram if needed to show the real systems, data ownership or imp
 
 ### Pre-merge test commands
 
-<!-- Give exact, copy-paste-ready commands for this PR, with the required setup, checkout, environment and expected results. Keep only relevant commands. Do not claim execution before running them. Repository examples below: -->
-
-~~~bash
-# From the PR checkout; install dependencies as needed.
-bun install --frozen-lockfile
-# Run the affected tests, or the full suite when needed.
-bun run test
-bun run format:check
-bun run lint
-bun run typecheck
-# Check whitespace in the complete PR diff.
-git diff --check origin/main...HEAD
-~~~
-
-**Task-specific commands / expected results:** [Focused Bun tests, API/browser checks, build or other exact commands with expected results. Use N/A for unrelated runtime checks on documentation-only PRs. For builds that need app config, use the documented environment setup and `bun run build`.]
+[Only the exact commands needed for this PR, including required setup and expected results. Use the current repository scripts and CI workflow. Omit unrelated tests; do not report unrun commands as passed.]
 
 <!-- Most CI checks depend on which files changed. Exception: `component-dockerfiles` runs on PRs only with the `full-ci` label. `verify` accepts skipped jobs as passing, so a green `verify` does NOT prove Docker images built. For Dockerfile changes, ask a maintainer to add `full-ci` and confirm `component-dockerfiles` passed. For every PASS record the tested SHA, environment and evidence. -->
 
