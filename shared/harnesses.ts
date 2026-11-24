@@ -40,6 +40,8 @@ export type Harness = {
   webSummary: string | null;
   /** The directory a release builds `openbot-<directory>` from, not the id. Null when none. */
   image: string | null;
+  /** False for external-only identities whose local source is retired. */
+  localInstall?: boolean;
   port: number | null;
   healthPath: string | null;
   runPath: string;
@@ -206,7 +208,7 @@ export function declaredHarness(id: unknown): Harness | undefined {
 /**
  * The harness an image reference runs, by the directory a release builds it from:
  * `ghcr.io/copilotkit/openbot-agent-langgraph-agui@sha256:…` is LangChain. Undefined for
- * an image OpenBot does not publish.
+ * an image the catalogue does not recognize. Retired local images remain recognizable for historical Bot labels.
  */
 export function harnessForImage(reference: string): Harness | undefined {
   const name = /(?:^|\/)(?:openbot-)?(agent-[a-z0-9-]+)(?::|@|$)/.exec(

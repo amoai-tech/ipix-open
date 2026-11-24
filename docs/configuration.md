@@ -243,8 +243,8 @@ provider and model each Bot runs:
     }
   },
   "bots": {
-    "agent-agno": { "provider": "openai", "model": "gpt-5.5" },
-    "agent-adk": { "provider": "openai", "model": "gpt-4o-mini" }
+    "agent-langgraph-ts": { "provider": "openai", "model": "gpt-5.5" },
+    "agent-mastra": { "provider": "openai", "model": "gpt-4o-mini" }
   }
 }
 ```
@@ -257,7 +257,7 @@ of it:
 3. the provider's `default_model` — what is left when neither says.
 
 Each Bot retains its existing default: for example, `agent-mastra` uses `gpt-4o-mini`, while
-`agent-agno` uses `gpt-5.5`. Editing a Bot's row changes that Bot's default without changing
+`agent-langgraph-ts` uses `gpt-5.5`. Editing a Bot's row changes that Bot's default without changing
 another Bot's choice. The Python LangGraph harness also accepts `BOT_PROVIDER=google_genai` as an
 alias for the spec's `google` provider.
 

@@ -619,18 +619,8 @@ jobs:
       fail-fast: false
       matrix:
         harness:
-          - agent-crewai
           - agent-claude-sdk
           - agent-langgraph-agui
-          - agent-llamaindex
-          - agent-agno
-          - agent-strands
-          - agent-pydantic-ai
-          - agent-adk
-          - agent-antigravity
-          - agent-langroid
-          - agent-ag2
-          - agent-microsoft
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

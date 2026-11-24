@@ -202,6 +202,10 @@ pub const DEFAULT_HARNESS: &str = "langgraph-ts";
 /// `registerCopilotKit` in the harness amounted to: that route serves the CopilotKit Runtime
 /// protocol, not AG-UI, and a run reached it and came back asking for a `method` field.
 pub fn catalogue() -> Vec<Harness> {
+    catalogue_rows(false)
+}
+
+fn catalogue_rows(include_retired: bool) -> Vec<Harness> {
     /*
      * Read from `shared/harnesses.json`, the one file every language reads, rather than written
      * here. The web app's New Bot dialog names the same frameworks, and a second copy of this list
@@ -233,6 +237,7 @@ pub fn catalogue() -> Vec<Harness> {
         name: String,
         summary: String,
         image: Option<String>,
+        local_install: Option<bool>,
         port: Option<u16>,
         health_path: Option<String>,
         run_path: String,
@@ -246,6 +251,7 @@ pub fn catalogue() -> Vec<Harness> {
 
     file.harnesses
         .into_iter()
+        .filter(|row| include_retired || row.local_install != Some(false))
         .map(|row| Harness {
             id: row.id,
             name: row.name,
@@ -289,7 +295,13 @@ pub fn picked(
     let row = catalogue()
         .into_iter()
         .find(|row| row.id == id)
-        .ok_or_else(|| format!("There is no Bot called \"{id}\" to install."))?;
+        .ok_or_else(|| {
+            if catalogue_rows(true).iter().any(|row| row.id == id) {
+                format!("The local Bot {id} was retired in iPix. Choose LangGraph, Mastra, or connect an existing AG-UI endpoint.")
+            } else {
+                format!("There is no Bot called \"{id}\" to install.")
+            }
+        })?;
     if row.id == "byo-url" {
         let url = choice
             .agent_url
@@ -658,12 +670,12 @@ mod tests {
         root
     }
 
-    fn write_crewai_manifest(root: &std::path::Path) {
+    fn write_langgraph_manifest(root: &std::path::Path) {
         std::fs::write(
             crate::deployment::images_path(root),
             "{ \"version\": \"v9.9.9\", \"images\": { \
-             \"agent-crewai\": { \
-             \"reference\": \"ghcr.io/copilotkit/openbot-agent-crewai@sha256:abc\" } } }",
+             \"agent-langgraph-ts\": { \
+             \"reference\": \"ghcr.io/copilotkit/openbot-agent-langgraph-ts@sha256:abc\" } } }",
         )
         .expect("manifest is written");
     }
@@ -685,20 +697,23 @@ mod tests {
 
         let picked = tauri::async_runtime::block_on(picked_after_deployment_ready(
             &root,
-            Some(&choice("crewai")),
+            Some(&choice("langgraph-ts")),
             || async {
-                write_crewai_manifest(&root);
+                write_langgraph_manifest(&root);
                 crate::deployment::record(&root, "v9.9.9", false)
                     .map_err(|error| format!("could not record deployment: {error}"))
             },
         ));
 
         let picked = picked.expect("selected harness should resolve after the deployment is ready");
-        let picked = picked.expect("crewai is installable");
+        let picked = picked.expect("langgraph-ts is installable");
         let crate::env::PickedHarness::Installed { image, .. } = picked else {
-            panic!("crewai should install a harness image");
+            panic!("langgraph-ts should install a harness image");
         };
-        assert_eq!(image, "ghcr.io/copilotkit/openbot-agent-crewai@sha256:abc");
+        assert_eq!(
+            image,
+            "ghcr.io/copilotkit/openbot-agent-langgraph-ts@sha256:abc"
+        );
         let _ = std::fs::remove_dir_all(&root);
     }
 
@@ -819,8 +834,8 @@ mod tests {
     /// A real row resolves to the image the release publishes and the port that image listens on.
     #[test]
     fn a_real_row_resolves_to_its_image_and_port() {
-        let root = deployment_naming_everything("crewai");
-        let crewai = picked(Some(&choice("crewai")), &root)
+        let root = deployment_naming_everything("langgraph-ts");
+        let installed = picked(Some(&choice("langgraph-ts")), &root)
             .expect("refused")
             .expect("nothing");
         let crate::env::PickedHarness::Installed {
@@ -829,12 +844,15 @@ mod tests {
             mastra,
             remote_agent_id,
             ..
-        } = crewai
+        } = installed
         else {
-            panic!("crewai should install a harness image");
+            panic!("langgraph-ts should install a harness image");
         };
-        assert_eq!(image, "ghcr.io/copilotkit/openbot-agent-crewai@sha256:abc");
-        assert_eq!(port, 4202);
+        assert_eq!(
+            image,
+            "ghcr.io/copilotkit/openbot-agent-langgraph-ts@sha256:abc"
+        );
+        assert_eq!(port, 4215);
         assert!(!mastra);
         assert!(remote_agent_id.is_empty());
         let _ = std::fs::remove_dir_all(&root);
@@ -862,11 +880,16 @@ mod tests {
     }
 
     /// Health checks stay on their readiness path, but the Bot is registered at the harness's real
-    /// run route. Agno and LlamaIndex do not serve AG-UI runs from the server root.
+    /// run route. The retained local harnesses use an empty run path, not /health.
     #[test]
     fn picked_harnesses_keep_run_routes_separate_from_health_routes() {
         let root = deployment_naming_everything("routes");
-        for (id, run_path) in [("agno", "/agui"), ("llamaindex", "/run")] {
+        for (id, run_path) in [
+            ("langgraph", ""),
+            ("langgraph-ts", ""),
+            ("claude-agent-sdk", ""),
+            ("mastra", ""),
+        ] {
             let row = catalogue()
                 .into_iter()
                 .find(|row| row.id == id)
@@ -904,8 +927,9 @@ mod tests {
         )
         .unwrap();
 
-        let refused = picked(Some(&choice("crewai")), &root).expect_err("it should be refused");
-        assert!(refused.contains("agent-crewai"), "{refused}");
+        let refused =
+            picked(Some(&choice("langgraph-ts")), &root).expect_err("it should be refused");
+        assert!(refused.contains("agent-langgraph-ts"), "{refused}");
         assert!(refused.contains("v1.2.3"), "{refused}");
         assert!(!refused.contains("denied"), "{refused}");
         let _ = std::fs::remove_dir_all(&root);
@@ -1007,6 +1031,29 @@ mod tests {
         }
     }
 
+    #[test]
+    fn retired_local_harnesses_are_not_installable_but_have_an_actionable_error() {
+        let ids: Vec<String> = catalogue().into_iter().map(|row| row.id).collect();
+        assert_eq!(
+            ids,
+            [
+                "langgraph",
+                "langgraph-ts",
+                "claude-agent-sdk",
+                "mastra",
+                "byo-url"
+            ]
+        );
+        for id in ["crewai", "google-adk", "agno", "pydantic-ai"] {
+            let message = picked(Some(&choice(id)), &std::env::temp_dir())
+                .expect_err("retired local harness was offered");
+            assert!(
+                message.contains("retired") && message.contains("AG-UI"),
+                "{message}"
+            );
+        }
+    }
+
     /// Exactly one row can take a subscription instead of a key, and the screen branches on it.
     /// Two would mean the branch is wrong; none would mean the Claude row was dropped.
     #[test]
@@ -1019,12 +1066,11 @@ mod tests {
         assert_eq!(anthropic, vec!["claude-agent-sdk".to_string()]);
     }
 
-    /// Ranked, and the order is load-bearing: it is what somebody reads top-down. CrewAI leads on
-    /// stars and the paste-a-URL row is last because it is the one that installs nothing.
+    /// Retained LangChain leads; the paste-a-URL row stays last because it installs nothing.
     #[test]
     fn the_list_is_ranked_and_ends_with_the_address_row() {
         let ids: Vec<String> = catalogue().into_iter().map(|h| h.id).collect();
-        assert_eq!(ids.first().map(String::as_str), Some("crewai"));
+        assert_eq!(ids.first().map(String::as_str), Some("langgraph"));
         assert_eq!(ids.last().map(String::as_str), Some("byo-url"));
     }
 
