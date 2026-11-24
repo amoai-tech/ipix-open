@@ -1,13 +1,11 @@
 name: Contributor CI
 
-# CI from pull requests opened from forks goes second (scripts/contributor-ci.ts). When a job of
+# Upstream-only manual recovery. CI from pull requests opened from forks goes second (scripts/contributor-ci.ts). When a job of
 # CopilotKit's own has waited more than three minutes for a runner, the fork runs in progress or
 # queued are cancelled, with a comment on each pull request; once nothing of CopilotKit's is
 # waiting, they are re-run one at a time. Nothing here checks out or runs a pull request's code:
 # it reads and acts on runs through the API only.
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -25,7 +23,8 @@ concurrency:
 jobs:
   yield:
     name: make way for CopilotKit's runs
-    runs-on: openbot-ubuntu-16core
+    if: github.repository == 'CopilotKit/OpenBot'
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read

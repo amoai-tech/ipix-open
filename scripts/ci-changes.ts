@@ -119,20 +119,7 @@ const pythonHarness = matcher(
 );
 
 /** The harnesses ci.yml's `python-harness` matrix tests, one job each. */
-export const PYTHON_HARNESSES = [
-  "agent-crewai",
-  "agent-claude-sdk",
-  "agent-langgraph-agui",
-  "agent-llamaindex",
-  "agent-agno",
-  "agent-strands",
-  "agent-pydantic-ai",
-  "agent-adk",
-  "agent-antigravity",
-  "agent-langroid",
-  "agent-ag2",
-  "agent-microsoft",
-];
+export const PYTHON_HARNESSES = ["agent-claude-sdk", "agent-langgraph-agui"];
 
 export const CI_RULES: Rule[] = [
   {
@@ -163,7 +150,7 @@ export const CI_RULES: Rule[] = [
   },
   {
     output: "startup",
-    checks: ["startup (macos-latest)", "startup (windows-latest)"],
+    checks: ["startup (ubuntu-latest)"],
     reads: (path) => isCode(path) || path === "app/tests/build-cache.test.ts",
   },
   {
@@ -203,37 +190,30 @@ export const SUITE_RULE: Rule = {
   reads: isCode,
 };
 
+const desktopNativeInput = (path: string) =>
+  (!isDocs(path) &&
+    !isBunTest(path) &&
+    matcher(
+      "desktop/**",
+      "shared/harnesses.json",
+      "shared/marks/**",
+      "shared/recorder-extension.json",
+      "shared/fixtures/client-version/**",
+      "package.json",
+    )(path)) ||
+  desktopInputs(path);
+
 export const DESKTOP_RULES: Rule[] = [
   {
     output: "core",
     checks: ["core"],
-    reads: (path) =>
-      (!isDocs(path) && matcher("desktop/src-tauri/**")(path)) ||
-      desktopInputs(path),
+    reads: desktopNativeInput,
   },
   {
     output: "app",
-    // The builds, and the Docker regression tests desktop.yml runs beside them on the same gate.
-    checks: [
-      "app / app (macos)",
-      "app / app (windows)",
-      "app / app (linux)",
-      "live (images)",
-      "live (engines)",
-    ],
-    // desktop.yml's own path filter, less the docs and the tests the suite runs.
-    reads: (path) =>
-      (!isDocs(path) &&
-        !isBunTest(path) &&
-        matcher(
-          "desktop/**",
-          "shared/harnesses.json",
-          "shared/marks/**",
-          "shared/recorder-extension.json",
-          "shared/fixtures/client-version/**",
-          "package.json",
-        )(path)) ||
-      desktopInputs(path),
+    // Automatic Docker live regressions; packaged installers are explicitly dispatched.
+    checks: ["live (images)", "live (engines)"],
+    reads: desktopNativeInput,
   },
 ];
 

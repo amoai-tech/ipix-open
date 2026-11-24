@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import {
   DEFAULT_BOT_ENGINE,
+  declaredHarness,
   HARNESSES,
   harnessForImage,
   reachedThroughMastra,
@@ -200,4 +201,38 @@ test("reads a subtitle OpenBot wrote under earlier names the way it writes it no
   ]) {
     expect(withCurrentFrameworkNames(title)).toBe(title);
   }
+});
+
+test("retired framework labels remain available for external agents only", () => {
+  const local = HARNESSES.filter(
+    (h) => h.image && h.localInstall !== false,
+  ).map((h) => h.image);
+  expect(local.sort()).toEqual([
+    "agent-claude-sdk",
+    "agent-langgraph-agui",
+    "agent-langgraph-ts",
+    "agent-mastra",
+  ]);
+  for (const id of ["crewai", "google-adk", "pydantic-ai"]) {
+    const harness = declaredHarness(id);
+    expect(harness?.localInstall).toBe(false);
+    expect(harness?.mark).toBeTruthy();
+    expect(WEB_HARNESSES).toContain(harness!);
+    expect(
+      withCurrentFrameworkNames(`Everyday life. Powered by ${harness!.name}.`),
+    ).toBe(starterSubtitle(harness!.name));
+  }
+});
+test("local installable images match the release manifest and source", async () => {
+  const published = await Bun.file(
+    `${import.meta.dir}/../.github/published-images.json`,
+  ).json();
+  const local = HARNESSES.filter(
+    (h) => h.image && h.localInstall !== false,
+  ).map((h) => h.image);
+  expect([...local].sort()).toEqual([...published].sort());
+  for (const image of local)
+    expect(
+      await Bun.file(`${import.meta.dir}/../${image}/Dockerfile`).exists(),
+    ).toBe(true);
 });

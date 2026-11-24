@@ -1106,9 +1106,9 @@ A job added to `ci.yml` is covered by it without anybody updating a list.
 | `native types` | a type error in the `mobile` app, which installs from its own npm lockfile |
 | `app (real browser)`, `app (real browser, WebKit)`, `app (real browser, desktop setup window)` | the app and desktop setup window behavior only a real Chromium shows, such as layout, and following the system's light or dark, and dictation's languages in WebKit, the engine the Mac window draws with |
 | `tests` | a decision made wrongly, in isolation |
-| `python harness (agent-crewai)` and one per harness | a provider-boundary regression in that Python Bot harness |
+| `python harness (agent-langgraph-agui)` and one per harness | a provider-boundary regression in that Python Bot harness |
 | `compose config` | a Compose file an older Compose cannot read |
-| `startup (macos-latest)`, `startup (windows-latest)` | the app's serve-or-build cache deciding wrongly on macOS or Windows |
+| `startup (ubuntu-latest)` | the app's serve-or-build cache on Linux; Windows/macOS startup checks are opt-in through CI dispatch and required for desktop releases |
 | `build` | the app not compiling |
 | `component dockerfiles` | a Dockerfile a release would publish that no longer builds, or one the publish list has stopped covering |
 
@@ -1123,7 +1123,7 @@ release commit:
 
 - When the release commit changes nothing but the release files from the commit it merged onto
   (its first parent), and main's CI passed on that commit, they do not. That commit's tree has been
-  through all of them already. The release files are `CHANGELOG.md` and `release-policy.json`, which
+  through the Linux-first suite already. The release workflow runs the missing Windows and macOS startup tests before publishing. The release files are `CHANGELOG.md` and `release-policy.json`, which
   may change freely, and the `version` in `package.json`, the `OPENBOT_BACKEND_TAG` line in
   `backend-images.env` and the `openbot-desktop` version line in
   `desktop/src-tauri/Cargo.toml` and `Cargo.lock`, which may change nothing else. Only a run of `ci.yml` for a push to this repository's `main`, at
@@ -1132,7 +1132,7 @@ release commit:
   their place the job re-runs the checks that read the files the release did change: formatting and
   lint, the desktop version against `package.json`, and every test that names
   `CHANGELOG.md` or `release-policy.json`.
-- Otherwise they all run again, as before: when any other path is added, removed, renamed or
+- Otherwise they all run again, including cross-platform startup: when any other path is added, removed, renamed or
   changed, when a version file changes more than its version, or when main's CI on that commit
   failed, was cancelled, never ran, could not be read, or was still running after the wait.
 
@@ -1167,8 +1167,8 @@ plan's backend a fixed Codex client version (`DEFAULT_CLIENT_VERSION` in
 with. A provider can refuse a new model to an older client while the picker keeps offering it:
 "Claude Code 2.1.259 does not support this model; version 2.1.290 or newer is required".
 
-**Model compatibility** (`.github/workflows/model-compat.yml`) checks for that daily, and by hand
-from the Actions tab. One job per harness in `.github/published-images.json` runs
+**Model compatibility** (`.github/workflows/model-compat.yml`) is retained as an upstream-only
+manual workflow. iPix uses the targeted Model lock PR check and local model probes instead. One job per harness in `.github/published-images.json` runs
 [`scripts/model-compat.ts`](../scripts/model-compat.ts), which:
 
 - lists each provider's models from the same source, with the same filter, as the picker (see
@@ -1182,11 +1182,10 @@ from the Actions tab. One job per harness in `.github/published-images.json` run
 
 It writes a pass, fail or skipped row per harness, image, provider and model, with the provider's
 own words, to the run's summary. On any failure the run fails and opens or updates one issue,
-**Model compatibility check failing**, and the first passing run closes it. It runs only on a
-schedule or by hand on `main`, never on a pull request.
+**Model compatibility check failing**, and the first passing run closes it. The broad upstream workflow runs only by hand on upstream `main`, never on a pull request.
 
 Each provider needs its key as a repository secret: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
-`GEMINI_API_KEY` (Google, also used for Antigravity) and `XAI_API_KEY`. A provider without one is
+`GEMINI_API_KEY` (Google) and `XAI_API_KEY`. A provider without one is
 reported as skipped, not failed, and the summary names the missing secrets. Unbiased AI is not
 checked: it is a gateway serving its own model, not a provider's listing.
 
@@ -1233,9 +1232,17 @@ the harness is hidden, and a conversation already set to one runs on the default
   (TypeScript) engine, `agent-langgraph-ts`) must verify at least one model on every provider it is
   locked for, or `scripts/model-lock.test.ts` fails: write its entry from a run, never empty. The
   lock can't reach main before an engine it names has its row in `shared/harnesses.json`.
-- **A new model** stays hidden until a daily run proves it. The run then opens or updates one pull
-  request, **Refresh the model lock**, on the branch `model-lock/refresh`, listing the models that
-  started and stopped answering and the clients that moved. Merging it lets the picker offer them.
+- **A new model** on a locked engine/provider pair stays hidden until verified results are merged
+  into the lock. There is no scheduled refresh. In iPix, a maintainer opens
+  [Model lock](https://github.com/amoai-tech/ipix-open/actions/workflows/model-lock.yml),
+  selects **Run workflow**, chooses the trusted branch and retained harness, and runs the check.
+  Download its `model-lock-<harness>` artifact, write and guard the lock using the commands below,
+  review the resulting change to `shared/model-lock.json`, and open a normal pull request.
+  A model verified on the source image becomes eligible for the picker after the updated lock
+  is merged and deployed; skipped probes are not verification. Upstream maintainers instead
+  dispatch [Model compatibility](https://github.com/CopilotKit/OpenBot/actions/workflows/model-compat.yml)
+  on upstream `main` with `latest,source`. If the lock changes, that run opens or updates
+  **Refresh the model lock** on `model-lock/refresh`; it does not merge the pull request.
   Every failure is asked once more before it counts. A failure that says nothing about the client
   keeps what the lock said before: the harness never started, a timeout, a rate limit, or a bare
   404 for a model the check's key can't see. A model the provider retires ("no longer available to
@@ -1245,7 +1252,7 @@ the harness is hidden, and a conversation already set to one runs on the default
   runs the **Model lock** workflow, which builds that harness, sends every listed model a request
   through it and through the published image, and fails when a model the lock verifies no longer
   answers through the change's image but still does through the published one. Models the bump
-  newly fixes are added by the next daily refresh.
+  newly fixes can be added by a reviewed manual refresh using the procedure above.
 - **The lock matches the pins.** The lock records the clients it was proven on, and
   `scripts/model-lock.test.ts` fails when a harness pins a different version (an exact
   `requirements.txt` pin, `agent-mastra/bun.lock`, or the Codex client version): a lock proven on

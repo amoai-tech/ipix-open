@@ -8,6 +8,8 @@ Newest first. `Unreleased` is what is on `main` and not yet tagged.
 
 ## Unreleased
 
+- **iPix local agent setup is smaller.** Ten retired frameworks remain available as external AG-UI identities but are no longer offered for local installation. Mastra, both LangGraph engines and Claude subscription compatibility remain. Existing retired local choices receive an actionable error instead of silently changing the Bot.
+
 **Before upgrading.**
 
 - **One migration, expand only.** `0138_management_enrollment` adds one table for connecting to

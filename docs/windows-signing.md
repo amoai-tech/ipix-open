@@ -18,11 +18,9 @@ automatically merges that filename into every Windows build.
 
 ## Request a signed validation build
 
-To sign a pull request's build, add the `windows-signing` label to a
-same-repository PR and approve its `windows-signing` environment deployment.
-The workflow checks out the exact PR head SHA from the labeling event. New
-pushes run the regression job; remove and reapply the label to sign the new SHA.
-Fork PRs cannot enter this signing job. There is no `pull_request_target` trigger.
+iPix does not sign automatically on pull requests or when a label is added.
+The signing workflow is dispatched by a maintainer or the release workflow.
+There is no `pull_request_target` trigger.
 
 To sign any ref, use **Actions → Desktop Windows signing → Run workflow**, select the
 ref to validate, and set `signing-mode` to `keyvault`. The default `none` runs
@@ -152,8 +150,11 @@ pwsh -NoProfile -File desktop/scripts/test-windows-signing.ps1
 
 The regression suite uses synthetic command results to test missing config,
 native failures, unsigned/altered signatures, publisher mismatch, absent
-timestamps, absent/stale installers, and evidence for both files. It runs on
-Windows PR CI without Azure access. Only a protected signing run proves the
+timestamps, absent/stale installers, and evidence for both files. To run it without Azure
+access, a maintainer must dispatch
+[Desktop Windows signing](https://github.com/amoai-tech/ipix-open/actions/workflows/desktop-signing.yml)
+with `signing-mode: none`. It does not run automatically on pull requests.
+Only a protected signing run proves the
 certificate, OIDC federation, and real Windows signature chain together.
 
 References: [Tauri custom signing](https://v2.tauri.app/distribute/sign/windows/),
