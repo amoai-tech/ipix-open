@@ -407,8 +407,9 @@ mod tests {
             self.manifests
                 .iter()
                 .find(|(version, _)| {
+                    let repository = compiled_distribution().repository;
                     url == format!(
-                        "https://github.com/CopilotKit/OpenBot/releases/download/{version}/release-manifest.json"
+                        "https://github.com/{repository}/releases/download/{version}/release-manifest.json"
                     )
                 })
                 .map(|(_, body)| body.clone())
@@ -468,15 +469,13 @@ mod tests {
         assert_eq!(from("v1.4.0", 1), "v1.1.1");
         // Nothing was laid out or recorded by choosing.
         assert!(deployment::installed(&root).is_none());
-        assert_eq!(
-            releases.asked.borrow().as_slice(),
-            [
-                "https://github.com/CopilotKit/OpenBot/releases/download/v1.3.0/release-manifest.json",
-                "https://github.com/CopilotKit/OpenBot/releases/download/v1.2.0/release-manifest.json",
-                "https://github.com/CopilotKit/OpenBot/releases/download/v1.3.0/release-manifest.json",
-                "https://github.com/CopilotKit/OpenBot/releases/download/v1.4.0/release-manifest.json",
-            ]
-        );
+        let repository = compiled_distribution().repository;
+        let expected = ["v1.3.0", "v1.2.0", "v1.3.0", "v1.4.0"].map(|version| {
+            format!(
+                "https://github.com/{repository}/releases/download/{version}/release-manifest.json"
+            )
+        });
+        assert_eq!(releases.asked.borrow().as_slice(), expected.as_slice());
         // An app newer than the latest never asks: its own release is the one it takes.
         assert_eq!(
             resolve_version_with(
