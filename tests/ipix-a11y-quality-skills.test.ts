@@ -14,6 +14,9 @@ test("accessibility skill uses valid scoped metadata, references and audit limit
     name?: string;
     description?: string;
   };
+  expect(skill).toContain("Audit-only requests: report findings and stop.");
+  expect(skill).toContain("Native Expo/React Native");
+  expect(skill).toContain("responsive web");
   expect(meta.name).toBe("accessibility-audit");
   expect((meta.description ?? "").length).toBeGreaterThan(70);
   expect(skill.split("\n").length).toBeLessThan(500);

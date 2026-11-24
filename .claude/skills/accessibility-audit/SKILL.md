@@ -1,6 +1,6 @@
 ---
 name: accessibility-audit
-description: "Use when auditing an existing ipix-open screen, CopilotKit-generated form/table/gallery or mobile UI for keyboard, screen reader, contrast and WCAG 2.2 AA problems. Verify in an actual browser; not for backend-only or rough wireframe tasks."
+description: "Use when auditing an existing ipix-open web screen, CopilotKit-generated form/table/gallery or responsive web UI for keyboard, screen reader, contrast and WCAG 2.2 AA problems. Verify rendered web in a browser; not for native Expo/React Native mobile, backend-only or rough wireframe tasks."
 ---
 
 # Accessibility audit — usable fashion UI for everyone
@@ -12,8 +12,8 @@ description: "Use when auditing an existing ipix-open screen, CopilotKit-generat
 1. Identify the rendered page/component and user task. For generated UI inspect `app/src/lib/copilot/a2ui.ts`, existing gallery/approval components and `openbot-screen-layout` where applicable. If the page does not yet exist, define an acceptance scenario; do not claim it was tested.
 2. Discover **installed** Playwright/a11y tools. Reuse existing browser harness, accessibility scripts or approved axe-core/pa11y versions. Do not execute arbitrary `npx @latest` installs or claim that automated audits prove complete WCAG conformance.
 3. Run an automated WCAG 2.2 AA scan on isolated QA where available, recording URL, SHA, viewport, ruleset, tool version and every evidenced violation. If tooling is not installed, document the precise gap and use verified manual browser checks without calling the automated gate a PASS.
-4. **Manually** test keyboard-only Tab/Shift+Tab, Enter/Space, Escape, visible focus, dialog focus trap/return, status announcements and any dynamically streaming tables/cards. Confirm labels, alt text for meaningful product images and readable error messages; test zoom and mobile layout.
-5. Fix the smallest true violation using existing accessible components and semantic controls. For AI-generated proposals keep proposed/saved state distinct and do not let a visual-only approval bypass exact server action approval.
+4. **Manually** test keyboard-only Tab/Shift+Tab, Enter/Space, Escape, visible focus, dialog focus trap/return, status announcements and any dynamically streaming tables/cards. Confirm labels, alt text for meaningful product images and readable error messages; test zoom and responsive web viewports. Native Expo/React Native in `mobile/` needs a separate platform-specific accessibility audit, not a browser-only result.
+5. **Audit-only requests: report findings and stop.** Only when explicitly asked to implement fixes, change the smallest verified violation using existing accessible controls. For AI proposals keep proposed/saved state distinct and preserve exact server approval.
 6. Re-run the failing case and a nearby regression. Record **PASS / FAIL / NOT VERIFIED / N/A-with-reason** plus screenshot/video/axe report where safe. Never upload private customer images or authenticated browser storage as CI artifacts.
 
 **Example:** A keyboard-only producer can reach every shot-list row, edit the selected crop, hear a streamed error, cancel the review dialog and return focus to the correct button; rejected changes save no shoot.

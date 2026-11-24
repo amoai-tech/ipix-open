@@ -13,8 +13,8 @@
       "id": "a11y-backend-negative",
       "skill": "accessibility-audit",
       "shouldTrigger": false,
-      "prompt": "Fix a backend-only Bun JSON parser test for malformed records. This has no user interface, DOM, keyboard control or screen reader behavior.",
-      "expected": "Does not activate accessibility-audit for a backend-only unit test."
+      "prompt": "Create a rough ASCII wireframe for a future responsive fashion shot-list screen. No rendered page exists yet; this is a design sketch, not an accessibility audit.",
+      "expected": "Prefers the existing ipix-wireframe design instructions; does not run a browser audit on an unbuilt sketch."
     }
   ]
 }
