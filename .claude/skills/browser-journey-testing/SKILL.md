@@ -24,6 +24,8 @@ A screenshot, mocked component or successful network request is not proof that a
 
 **Example:** Synthetic producer opens a six-look proposal, edits look 3, rejects another, approves the exact revision, refreshes and sees one saved plan. If the Planner has not yet been migrated, this is an **acceptance scenario**, not a completed test.
 
+For a repeatable interrupted conversation test, follow the [existing OpenBot connection-recovery QA scenario](references/connection-recovery-qa.md). It links actual channel and history tests, requires network 502 evidence, refresh and canonical saved-message readback, and distinguishes simulated tests from live QA.
+
 ## Sources used in this skill
 
 **Reference — ADAPT:** https://github.com/addyosmani/agent-skills/blob/8c99fa36d90068c82d547f7c12a9d67a3e95f4ee/skills/browser-testing-with-devtools/SKILL.md → browser DOM/network/console/screenshot workflow. **Do not copy:** `@latest` installs, browser profile attachment or assumptions that Chrome DevTools MCP is configured. **Apply to:** this skill and actual existing OpenBot Playwright tests when a user-facing task needs proof. **Verify:** error-free/negative path screenshot + network assertion.

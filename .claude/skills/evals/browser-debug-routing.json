@@ -7,7 +7,7 @@
       "skill": "browser-journey-testing",
       "shouldTrigger": true,
       "prompt": "Using a disposable nonproduction QA tenant and isolated browser profile in ipix-open, verify the real signed-in Bot conversation: send a message, observe streaming, refresh and prove the conversation is restored, recording browser network and console evidence.",
-      "expected": "Inspects the existing browser test harness, refuses shared staging, requires an isolated nonproduction QA actor, verifies UI/network/reload behavior and marks unavailable runtime proof NOT VERIFIED."
+      "expected": "Inspects the existing browser test harness, refuses shared staging, requires an isolated nonproduction QA actor, verifies UI/network/reload behavior and marks unavailable runtime proof NOT VERIFIED. For interruption and refresh, consults references/connection-recovery-qa.md and distinguishes mocked tests from live QA readback."
     },
     {
       "id": "browser-backend-negative",

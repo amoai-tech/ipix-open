@@ -1,6 +1,6 @@
 /** Developer-skill metadata and fixture checks. Not live browser tests or skill invocation certification. */
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const base = resolve(import.meta.dir, "..");
@@ -55,6 +55,30 @@ test("routing includes positive and negative prompts for both skills", () => {
     expect(item.prompt.length).toBeGreaterThan(80);
     expect(item.expected.length).toBeGreaterThan(65);
   }
+});
+test("interrupted conversation QA recipe points to actual OpenBot tests and independent readback", () => {
+  const scenario = read(
+    ".claude/skills/browser-journey-testing/references/connection-recovery-qa.md",
+  );
+  const browser = read(".claude/skills/browser-journey-testing/SKILL.md");
+  for (const file of [
+    "app/tests/connection-lost-conversation.test.tsx",
+    "app/tests/connection-lost-conversation-route.test.tsx",
+    "app/tests/channel-history-refresh.test.tsx",
+  ]) {
+    expect(scenario).toContain(file);
+    expect(existsSync(join(base, file))).toBe(true);
+  }
+  for (const evidence of [
+    "502",
+    "refresh",
+    "network",
+    "authorized QA API",
+    "NOT VERIFIED",
+    "canonical",
+  ])
+    expect(scenario.toLowerCase()).toContain(evidence.toLowerCase());
+  expect(browser).toContain("references/connection-recovery-qa.md");
 });
 test("real browser proof and debugging guardrails remain explicit", () => {
   const browser = read(".claude/skills/browser-journey-testing/SKILL.md");
