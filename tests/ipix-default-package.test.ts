@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
 
@@ -84,11 +84,12 @@ describe("canonical iPix application package", () => {
     });
   });
 
-  test("mounts the real package read-only, without altering the upstream base compose", () => {
-    const override = parse(
-      readFileSync(join(root, "docker-compose.override.yml"), "utf8"),
+  test("mounts the real package read-only without shipping a customer-owned override", () => {
+    const compose = parse(
+      readFileSync(join(root, "docker-compose.yml"), "utf8"),
     );
-    const server = override.services.server;
+    const server = compose.services.server;
+    expect(existsSync(join(root, "docker-compose.override.yml"))).toBe(false);
     expect(server.environment.TENANT_PACKAGE_DIR).toBe(
       `\${TENANT_PACKAGE_DIR:-../config/ipix}`,
     );
@@ -97,7 +98,7 @@ describe("canonical iPix application package", () => {
       source: "./config/ipix",
       target: "/app/config/ipix",
       read_only: true,
-      bind: { create_host_path: false },
+      bind: { create_host_path: true },
     });
   });
 });

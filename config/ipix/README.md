@@ -5,11 +5,13 @@ Fintech example. Upstream examples remain unchanged for upgrades and comparison.
 
 - Fresh checkout: copy .env.example to .env and follow the existing startup
   instructions. The frontend generator and build cache default to this package.
-- Compose: the checkout's docker-compose.override.yml mounts this directory
-  read-only at /app/config/ipix and selects it by default. If invoking Compose
-  with explicit -f options, include both docker-compose.yml and
-  docker-compose.override.yml. The standalone upstream image/Desktop layout
-  without that override retains its original packages.
+- Compose: the checkout's standard docker-compose.yml mounts this directory
+  read-only at /app/config/ipix and selects it by default. Customer-owned
+  Compose overrides remain separate and protected by the updater. Explicit
+  TENANT_PACKAGE_DIR selections (including Desktop's personal package) still win.
+  Desktop distributions that do not carry the checkout can mount an empty
+  directory; the selected bundled personal package is unaffected. The iPix
+  package itself must contain the required YAML files.
 - Existing installations: keep your backup, review existing seeded Bots and
   grants, then explicitly change TENANT_PACKAGE_DIR=../config/ipix in .env and
   restart/rebuild the checkout web app. The stable package ID remains openbot.
