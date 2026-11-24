@@ -24,6 +24,14 @@ Inspect current diff, active PRs and acceptance criteria. If the alleged gap is 
 5. **User journey:** Where applicable, run signed-in browser or API scenario; confirm actual canonical readback, not just a toast or mock.
 6. **Audit:** Record PASS / FAIL / NOT VERIFIED / N/A-with-reason for each applicable gate, with head SHA and evidence. **FAIL or NOT VERIFIED** on a required gate prevents Done.
 
+## Release proof — only when deployment/runtime changed
+
+A merged PR is not itself a production release. Verify **which** artifact/commit was built, environment/project/domain, exact-head CI and skip status, staging authenticated journey, production authorization, rollback candidate and post-deploy canonical readback. A successful release-classification job with skipped publish jobs is **NOT** a deployment. Record missing staging or production evidence as **NOT VERIFIED**; do not downgrade required security gates to N/A.
+
+**Reference — ADAPT:** https://github.com/addyosmani/agent-skills/blob/8c99fa36d90068c82d547f7c12a9d67a3e95f4ee/skills/shipping-and-launch/SKILL.md → release gating and rollback proof. **Do not copy:** any deploy command until the exact iPix Open owner/project and release policy are verified. **Apply to:** `task-verifier` for a runtime or release task, after the focused test gates. **Verify:** SHA-to-deployment mapping, real app journey and rollback readiness.
+
+For documentation-only changes, this entire release gate is **N/A — no runtime deployment**, while static documentation checks and real skill-activation claims retain their own evidence requirements.
+
 ## Examples
 
 - Documentation-only PR: correct links/frontmatter and skill descriptions PASS; business RLS write test **N/A — no runtime write change**. **Real skill-activation certification** remains NOT VERIFIED until a real run.

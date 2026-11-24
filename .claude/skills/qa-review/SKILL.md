@@ -20,5 +20,11 @@ Choose **feature mode** (review intended flow, missing states and tests before i
 3. Check meaningful negative paths: unauthenticated, Org B, stale draft, model outage, stream interruption, cancellation, repeated approval, server 409 and recovery.
 4. Preserve existing OpenBot three skills, generated API behavior and general Bot flows.
 5. Report **every distinct evidence-backed merge risk**, even when more than five exist. Suggest **up to five** highest-value actor/action/expected-outcome tests, each PASS / FAIL / NOT VERIFIED; distinguish confirmed bugs from hypotheses.
+## Prevent repeated agent mistakes
+
+When the **same failure class** appears in two independent PRs, do not just add more prose. Record the concrete recurrence and eliminate it at the strongest affordable layer: architecture or module boundary → installed type contract → lint/CI prohibition → observable regression test → reviewer instruction only if enforcement is impossible. Test the new guard against the actual old failure. Do not make speculative global lint rules from a single unproven complaint.
+
+**Reference — ADAPT:** https://github.com/cursor/plugins/blob/005d8f6e8ec057b738adcd08a08b30db0478402d/pstack/skills/correct/SKILL.md → convert repeated agent errors to enforceable guardrails. **Do not copy:** global agent installation or unconditional auto-commit/merge workflow. **Apply to:** `qa-review`'s repeated finding, then an approved local test/lint rule if evidence justifies it. **Verify:** known bad fixture fails and corrected code passes; no extra false-positive failure.
+
 ## Example
 After switching organizations, a producer clicks Approve on an old proposal: server rechecks identity/tenant and blocks stale action.
