@@ -150,8 +150,11 @@ pwsh -NoProfile -File desktop/scripts/test-windows-signing.ps1
 
 The regression suite uses synthetic command results to test missing config,
 native failures, unsigned/altered signatures, publisher mismatch, absent
-timestamps, absent/stale installers, and evidence for both files. It runs on
-Windows PR CI without Azure access. Only a protected signing run proves the
+timestamps, absent/stale installers, and evidence for both files. To run it without Azure
+access, a maintainer must dispatch
+[Desktop Windows signing](https://github.com/amoai-tech/ipix-open/actions/workflows/desktop-signing.yml)
+with `signing-mode: none`. It does not run automatically on pull requests.
+Only a protected signing run proves the
 certificate, OIDC federation, and real Windows signature chain together.
 
 References: [Tauri custom signing](https://v2.tauri.app/distribute/sign/windows/),

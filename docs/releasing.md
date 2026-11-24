@@ -1232,9 +1232,17 @@ the harness is hidden, and a conversation already set to one runs on the default
   (TypeScript) engine, `agent-langgraph-ts`) must verify at least one model on every provider it is
   locked for, or `scripts/model-lock.test.ts` fails: write its entry from a run, never empty. The
   lock can't reach main before an engine it names has its row in `shared/harnesses.json`.
-- **A new model** stays hidden until a daily run proves it. The run then opens or updates one pull
-  request, **Refresh the model lock**, on the branch `model-lock/refresh`, listing the models that
-  started and stopped answering and the clients that moved. Merging it lets the picker offer them.
+- **A new model** on a locked engine/provider pair stays hidden until verified results are merged
+  into the lock. There is no scheduled refresh. In iPix, a maintainer opens
+  [Model lock](https://github.com/amoai-tech/ipix-open/actions/workflows/model-lock.yml),
+  selects **Run workflow**, chooses the trusted branch and retained harness, and runs the check.
+  Download its `model-lock-<harness>` artifact, write and guard the lock using the commands below,
+  review the resulting change to `shared/model-lock.json`, and open a normal pull request.
+  A model verified on the source image becomes eligible for the picker after the updated lock
+  is merged and deployed; skipped probes are not verification. Upstream maintainers instead
+  dispatch [Model compatibility](https://github.com/CopilotKit/OpenBot/actions/workflows/model-compat.yml)
+  on upstream `main` with `latest,source`. If the lock changes, that run opens or updates
+  **Refresh the model lock** on `model-lock/refresh`; it does not merge the pull request.
   Every failure is asked once more before it counts. A failure that says nothing about the client
   keeps what the lock said before: the harness never started, a timeout, a rate limit, or a bare
   404 for a model the check's key can't see. A model the provider retires ("no longer available to
@@ -1244,7 +1252,7 @@ the harness is hidden, and a conversation already set to one runs on the default
   runs the **Model lock** workflow, which builds that harness, sends every listed model a request
   through it and through the published image, and fails when a model the lock verifies no longer
   answers through the change's image but still does through the published one. Models the bump
-  newly fixes are added by the next daily refresh.
+  newly fixes can be added by a reviewed manual refresh using the procedure above.
 - **The lock matches the pins.** The lock records the clients it was proven on, and
   `scripts/model-lock.test.ts` fails when a harness pins a different version (an exact
   `requirements.txt` pin, `agent-mastra/bun.lock`, or the Codex client version): a lock proven on
