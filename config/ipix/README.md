@@ -18,7 +18,9 @@ Fintech example. Upstream examples remain unchanged for upgrades and comparison.
   customer protection.
 - Existing installations: keep your backup, review existing seeded Bots and
   grants, then explicitly change TENANT_PACKAGE_DIR=../config/ipix in .env and
-  restart/rebuild the checkout web app. The stable package ID remains openbot.
+  run `bash scripts/start.sh` from the checkout root. It recreates the server
+  when its configuration changes and starts the checkout web app, so both
+  load the selected package. The stable package ID remains openbot.
   The loader may preserve user edits or retire old seed entries; verify actual
   conversations, Bot grants and channels before switching real workspaces.
   Do not reset volumes or change deployment/installation IDs.

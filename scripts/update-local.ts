@@ -815,9 +815,12 @@ async function assertSourceUpdateSafe(
   const cleanIPix = await cleanShippedIPixPackage(root, run);
   const paths = protectedPaths(root, env, customerPaths, cleanIPix);
   const changed = (
-    await run(["git", "diff", "--name-only", "-z", head, targetCommit], {
-      cwd: root,
-    })
+    await run(
+      ["git", "diff", "--no-renames", "--name-only", "-z", head, targetCommit],
+      {
+        cwd: root,
+      },
+    )
   )
     .split("\0")
     .filter(Boolean);

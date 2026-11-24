@@ -43,6 +43,7 @@ function fixture(
     candidate?: string;
     ipix?: boolean;
     ipixChanges?: boolean;
+    ipixRename?: boolean;
   } = {},
 ) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "openbot-update-")));
@@ -70,7 +71,10 @@ function fixture(
     join(root, "docker-compose.yml"),
     compose.candidate ?? compose.installed ?? EARLIER_COMPOSE,
   );
-  if (compose.ipix && compose.ipixChanges !== false) {
+  if (compose.ipix && compose.ipixRename) {
+    git("config", "diff.renames", "true");
+    git("mv", "config/ipix/brand.yaml", "moved-brand.yaml");
+  } else if (compose.ipix && compose.ipixChanges !== false) {
     writeFileSync(join(root, "config/ipix/brand.yaml"), "new\n");
     writeFileSync(join(root, "config/ipix/new.yaml"), "release\n");
     git("add", "config/ipix/new.yaml");
@@ -218,6 +222,27 @@ test("iPix local additions and explicitly protected package refuse release colli
     expect(f.git("rev-parse", "HEAD")).toBe(f.old);
     expect(f.calls.some((c) => c.includes(" stop "))).toBe(false);
   }
+});
+
+test("a rename out of a customer-owned iPix package refuses before any update", async () => {
+  const f = fixture("image", { ipix: true, ipixRename: true });
+  const local = join(f.root, "config/ipix/local.yaml");
+  writeFileSync(local, "customer\n");
+  // Prove Git detects a rename, whose default name-only output omits the source.
+  expect(f.git("diff", "--name-only", f.old, f.target).split("\n")).toEqual([
+    "moved-brand.yaml",
+    "runtime.txt",
+  ]);
+  const plan = await planLocalUpdate(f.options);
+  expect(plan.allowed).toBe(false);
+  expect(plan.reasons.join(" ")).toContain("config/ipix/brand.yaml");
+  await expect(applyLocalUpdate(f.options)).rejects.toThrow("customer-owned");
+  expect(f.git("rev-parse", "HEAD")).toBe(f.old);
+  expect(readFileSync(join(f.root, "config/ipix/brand.yaml"), "utf8")).toBe(
+    "old\n",
+  );
+  expect(readFileSync(local, "utf8")).toBe("customer\n");
+  expect(f.calls.some((c) => c.includes(" stop "))).toBe(false);
 });
 
 test("late iPix additions or edits after backup refuse before source installation", async () => {

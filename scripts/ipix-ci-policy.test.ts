@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -124,6 +130,66 @@ test("upgrade regressions run only for relevant PRs; historical runs are explici
       OPENBOT_RELEASE_REPOSITORY: `\${{ github.repository }}`,
     },
   });
+});
+
+test("upgrade fallback executes the pinned commit and release asset guards", () => {
+  const run = read("desktop-upgrade.yml").jobs.upgrade?.steps?.find(
+    (step) => step.id === "from",
+  )?.run;
+  if (!run) throw new Error("Missing upgrade selection script");
+  const pinned = "8826a0fe3827b80c519b6b8a274e74efbaef7868";
+  const temp = mkdtempSync(join(tmpdir(), "ipix-upgrade-policy-"));
+  try {
+    // All GitHub requests are handled by this stub. Use real Bun, jq and the unmodified workflow.
+    writeFileSync(
+      join(temp, "gh"),
+      `#!/bin/sh
+case "$*" in
+  'release list --repo amoai-tech/ipix-open --limit 1000 --exclude-drafts --json tagName,publishedAt,isPrerelease')
+    printf '%s\n' '[]' ;;
+  'release view v1.1.2 --repo CopilotKit/OpenBot --json isDraft,isPrerelease,assets')
+    printf '%s\n' "$TEST_RELEASE" ;;
+  "api repos/CopilotKit/OpenBot/commits/v1.1.2 --jq .sha")
+    printf '%s\n' "$TEST_BASELINE" ;;
+  *) printf '%s\n' 'Unexpected GitHub call' >&2; exit 99 ;;
+esac
+`,
+      { mode: 0o700 },
+    );
+    for (const [name, baseline, asset, allowed] of [
+      ["pinned", pinned, true, true],
+      ["moved", "0".repeat(40), true, false],
+      ["missing-asset", pinned, false, false],
+    ] as const) {
+      const output = join(temp, name);
+      writeFileSync(output, "");
+      const result = Bun.spawnSync(["bash", "-c", run], {
+        cwd: root,
+        env: {
+          PATH: `${temp}:${process.env.PATH ?? ""}`,
+          HOME: temp,
+          GITHUB_REPOSITORY: "amoai-tech/ipix-open",
+          GITHUB_OUTPUT: output,
+          RUNNER_TEMP: temp,
+          RELEASE: "previous",
+          TEST_BASELINE: baseline,
+          TEST_RELEASE: JSON.stringify({
+            isDraft: false,
+            isPrerelease: false,
+            assets: asset ? [{ name: "container-images.json" }] : [],
+          }),
+        },
+      });
+      expect(result.exitCode, `${name}: ${result.stderr.toString()}`).toBe(
+        allowed ? 0 : 1,
+      );
+      expect(readFileSync(output, "utf8"), name).toBe(
+        allowed ? "repository=CopilotKit/OpenBot\nrelease=v1.1.2\n" : "",
+      );
+    }
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
 });
 
 test("model lock selection uses the actual workflow shell without real provider calls", () => {
