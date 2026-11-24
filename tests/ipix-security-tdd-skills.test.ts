@@ -24,7 +24,7 @@ test("security and TDD skills have correctly scoped frontmatter", () => {
     expect(source).toContain("Do not copy:");
   }
 });
-test("two positive and two negative evaluation cases are well formed", () => {
+test("two positive and one near-miss per skill are well formed", () => {
   const data = JSON.parse(
     read(".claude/skills/evals/security-tdd-routing.json"),
   ) as {
@@ -44,9 +44,8 @@ test("two positive and two negative evaluation cases are well formed", () => {
       data.cases
         .filter((x) => x.skill === name)
         .map((x) => x.shouldTrigger)
-        .filter((value, index, values) => values.indexOf(value) === index)
         .sort(),
-    ).toEqual([false, true]);
+    ).toEqual([false, true, true]);
   }
   expect(new Set(data.cases.map((x) => x.id)).size).toBe(6);
   for (const entry of data.cases) {
@@ -64,12 +63,13 @@ test("revoked approval retry is required and routed to both appropriate skills",
   expect(security).toContain("zero new shoot records");
   expect(security).toContain("reauthorizes on execution/resume");
   expect(tdd).toContain("revocation between approval");
-  for (const id of [
-    "security-approval-revoked-retry",
-    "tdd-approval-revoked-retry",
+  for (const [id, skill] of [
+    ["security-approval-revoked-retry", "security-threat-modeling"],
+    ["tdd-approval-revoked-retry", "test-driven-development"],
   ]) {
     const fixture = fixtures.cases.find((x) => x.id === id);
     expect(fixture?.shouldTrigger).toBe(true);
+    expect(fixture?.skill).toBe(skill);
   }
 });
 test("cross-tenant authorization and red/green persistence proof are required", () => {
