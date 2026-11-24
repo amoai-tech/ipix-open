@@ -150,6 +150,14 @@ test("critical routing fixtures provide realistic positive and near-miss cases",
     entries.add(fixture.shouldTrigger);
     bySkill.set(fixture.skill, entries);
   }
+  const planner = fixtures.cases.find(
+    (entry) => entry.id === "mastra-migration",
+  );
+  expect(planner?.prompt).toContain(
+    "bundled generic Mastra harness as a reference",
+  );
+  expect(planner?.expected).toContain("isolated iPix Planner service");
+  expect(planner?.expected).toContain("REFERENCE ONLY");
   expect(bySkill.size).toBe(6);
   for (const flags of bySkill.values())
     expect([...flags].sort()).toEqual([false, true]);

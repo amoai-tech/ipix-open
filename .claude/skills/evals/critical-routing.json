@@ -6,8 +6,8 @@
       "id": "mastra-migration",
       "skill": "mastra",
       "shouldTrigger": true,
-      "prompt": "In this ipix-open branch, plan how to port the real iPix Production Planner and its six-outfit shoot workflow into the bundled Mastra service without calling the legacy deployed app. Show current files, auth, and QA memory proof before coding.",
-      "expected": "Identifies standalone target, native agent-mastra and harness registry, source-only legacy dependency closure, isolated QA memory and authentication STOP gates."
+      "prompt": "In this ipix-open branch, plan how to port the real iPix Production Planner and its six-outfit shoot workflow into an isolated service in this repository. Check the bundled generic Mastra harness as a reference, not a destination for brand tools or credentials. Show auth and QA memory proof before coding.",
+      "expected": "Requires an isolated iPix Planner service inside ipix-open, with agent-mastra used as REFERENCE ONLY; source-only legacy code, isolated QA memory and verified per-user authorization STOP gates."
     },
     {
       "id": "mastra-demo-negative",
