@@ -1,6 +1,6 @@
 ---
 name: mastra
-description: Use when implementing or reviewing Mastra Production Planner connections, agents, workflows, HITL, memory, stopping runs and AG-UI streaming in OpenBot.
+description: Use for connecting or reviewing the remote iPix Mastra Production Planner through OpenBot, including agent discovery, auth, HITL, streaming, stop/retry and durable approvals; not for edits to the bundled OpenBot agent-mastra harness.
 ---
 
 # Mastra — iPix → OpenBot
@@ -14,6 +14,7 @@ description: Use when implementing or reviewing Mastra Production Planner connec
 - Never trust a browser-supplied organization, user, thread or run ID as authorization. Human approval plus server-side revalidation and idempotent execution are mandatory for consequential actions.
 
 ## Remote Planner integration
+Scope: the remote iPix Planner integration only. OpenBot also ships `agent-mastra/`; edits to that bundled harness require its own installed Mastra types and harness contracts, not these remote-Planner assumptions.
 1. Locate the existing iPix Production Planner and verify its currently installed Mastra types, authentication endpoint and server-side identity contract.
 2. Prefer OpenBot's native remote agent/AG-UI connection; do not install a duplicate Mastra runtime, invent transport or create another run registry.
 3. Keep tools as read/compute/propose until a server-approved exact action is authorized.

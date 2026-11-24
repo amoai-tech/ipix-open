@@ -1,6 +1,6 @@
 ---
 name: ponytail
-description: "Use to find the smallest safe change for OpenBot coding, bug fixes, YAGNI, reuse, root-cause repairs, and avoiding over-engineering or new dependencies."
+description: "Use when deciding whether a proposed OpenBot implementation, abstraction, or dependency is needed versus reusing existing code; or when explicitly asked for YAGNI, the smallest safe fix, or less boilerplate."
 ---
 
 # Ponytail — smallest safe working change
