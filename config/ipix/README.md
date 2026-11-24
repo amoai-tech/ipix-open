@@ -20,12 +20,15 @@ Fintech example. Upstream examples remain unchanged for upgrades and comparison.
   web frontend (scripts/start.sh) for generated iPix branding. A custom release
   image is a separate deployment task.
 - No real brand data, management MCP access or production writes are enabled
-  by this package. The optional native Planner endpoint is blank by default
-  until IPI-1492 and IPI-1493 prove authorization and migration. OpenBot omits
-  blank-endpoint remote agents and their channel grants. The intended remote
-  agent ID defaults to production-planner, not automatic discovery. Compose
-  deliberately does not forward the Planner environment variables yet; the
-  gated integration task must configure the approved server environment.
+  by this package. The Mastra Planner is intentionally absent from the server's
+  active agent roster and channel grants. The Compose server receives .env via
+  env_file, but Planner variables cannot activate an agent that is not declared.
+  IPI-1492 and IPI-1493 must prove per-user identity, tenant isolation and exact
+  agent discovery before a reviewed code change registers the Planner. Do not
+  manually register it or reuse an earlier pilot roster with real brand data.
+  Existing pilot installations must verify and remove any previously registered
+  Planner and its grants before allowing user access; this package does not
+  certify cleanup of existing database state.
 - The model and built-in skill instructions retain the upstream supported
   schema; verify the configured credential can access the model at runtime.
 - Rollback: restore the previous TENANT_PACKAGE_DIR and rebuild/restart the
@@ -43,7 +46,6 @@ flowchart TD
     A --> C["Read-only Compose mount"]
     C --> D["Packaged OpenBot tenant loader"]
     D --> E["Production Assistant and Brand Knowledge"]
-    D --> F{"Authorized Planner configured?"}
-    F -- No --> G["No remote Planner registered"]
-    F -- Yes --> H["Native Mastra integration after security proof"]
+    D --> F["No remote Planner in shipped roster or channel grants"]
+    F -.-> G["Future reviewed registration after IPI-1492/1493"]
 ```

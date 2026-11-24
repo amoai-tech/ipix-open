@@ -28,7 +28,7 @@ describe("canonical iPix application package", () => {
     );
   });
 
-  test("loads two built-in coworkers and keeps the remote Planner opt-in", () => {
+  test("ships only two built-in coworkers and no remote Planner or grants", () => {
     const { agents } = read("agents.yaml");
     const { skills } = read("skills.yaml");
     const { channels } = read("channels.yaml");
@@ -44,12 +44,14 @@ describe("canonical iPix application package", () => {
     const remote = agents.filter(
       (a: { type: string }) => a.type !== "built-in",
     );
-    expect(remote).toHaveLength(1);
-    expect(remote[0]).toMatchObject({
-      type: "remote-mastra",
-      endpoint: `\${IPIX_MASTRA_URL:-}`,
-      remote_agent_id: `\${IPIX_MASTRA_AGENT_ID:-production-planner}`,
-    });
+    expect(remote).toHaveLength(0);
+    expect(agents).toHaveLength(2);
+    expect(ids.has("ipix-production-planner")).toBe(false);
+    expect(
+      channels.flatMap(
+        (c: { permitted_agents: string[] }) => c.permitted_agents,
+      ),
+    ).not.toContain("ipix-production-planner");
     for (const a of agents) {
       for (const slug of a.skills ?? []) expect(slugs.has(slug)).toBe(true);
     }
@@ -64,6 +66,22 @@ describe("canonical iPix application package", () => {
         skills.find((s: { slug: string }) => s.slug === slug).tools,
       ).toEqual([]);
     }
+  });
+
+  test("Planner environment settings cannot activate an undeclared server agent", () => {
+    for (const file of ["agents.yaml", "channels.yaml"]) {
+      const source = readFileSync(join(dir, file), "utf8");
+      expect(source).not.toContain("IPIX_MASTRA_");
+      expect(source).not.toContain("ipix-production-planner");
+    }
+    expect(readdirSync(join(dir, "agents"))).toEqual(["README.md"]);
+    const compose = parse(
+      readFileSync(join(root, "docker-compose.yml"), "utf8"),
+    );
+    expect(compose.services.server.env_file).toContainEqual({
+      path: `\${OPENBOT_SERVER_ENV_FILE:-./.env}`,
+      required: false,
+    });
   });
 
   test("mounts the real package read-only, without altering the upstream base compose", () => {

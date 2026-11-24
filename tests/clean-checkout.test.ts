@@ -18,7 +18,8 @@ describe("a clone that has only run bun install", () => {
       ...agents.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)([^}]*)\}/g),
     ];
 
-    expect(referenced.length).toBeGreaterThan(0);
+    // A package with no environment references is also valid on a fresh checkout.
+    expect(agents).toContain("type: built-in");
     for (const [, name, rest] of referenced) {
       expect(
         rest.startsWith(":-"),

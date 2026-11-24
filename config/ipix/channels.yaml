@@ -2,7 +2,7 @@ channels:
   - id: general-assistant
     name: Production
     description: Draft fashion shoot plans and creative briefs.
-    permitted_agents: [general-assistant, ipix-production-planner]
+    permitted_agents: [general-assistant]
     allowed_groups: [all]
   - id: company-knowledge
     name: Brand Intelligence
