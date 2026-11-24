@@ -160,7 +160,9 @@ test("the Chrome package is the built Recorder without the manifest key and with
   const packed = text(chrome[KEY_FILE]) ?? "";
   expect(packed.startsWith("-----BEGIN PRIVATE KEY-----\n")).toBe(true);
   expect(
-    createPublicKey(createPrivateKey(packed))
+    createPublicKey(
+      createPrivateKey(packed).export({ type: "pkcs8", format: "pem" }),
+    )
       .export({ type: "spki", format: "der" })
       .toString("base64"),
   ).toBe(key.spki);

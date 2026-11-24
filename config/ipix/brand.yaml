@@ -1,0 +1,4 @@
+# Keep the existing package identity so a branding change does not orphan seeded records.
+tenant:
+  id: openbot
+  product_name: iPix

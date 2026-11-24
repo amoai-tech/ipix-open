@@ -4,21 +4,12 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { SKILL_CREATOR_SLUG } from "@/lib/skills/proposal";
 
-/**
- * The one coupling in this feature that can break silently.
- *
- * The app offers the four authoring tools only to a Bot holding `SKILL_CREATOR_SLUG`, and the shipped
- * package is what puts a skill under that slug in the deployment and grants it to a Bot. Neither half
- * fails loudly without the other: rename the slug in the YAML and the tools are simply never offered,
- * grant it to nobody and there is no Bot to write a skill with. Both look like a working deployment
- * where writing a skill in a conversation does nothing, which is the kind of break nobody finds.
- *
- * Read from the file rather than from a fixture, because the file is what ships.
+/** The iPix package retains the native authoring slug for explicit operator grants,
+ * but neither default coworker holds it. Keep the SDK coupling and intentional
+ * default-deny policy visible in tests; user-authorized writes still use native APIs.
  */
 
-const packageDir = fileURLToPath(
-  new URL("../../examples/fintech", import.meta.url),
-);
+const packageDir = fileURLToPath(new URL("../../config/ipix", import.meta.url));
 
 const shipped = parse(readFileSync(`${packageDir}/skills.yaml`, "utf8")) as {
   skills: { slug: string; title: string; instructions: string }[];
@@ -34,12 +25,12 @@ describe("the shipped package and the app agree on the authoring skill", () => {
     expect(slugs).toContain(SKILL_CREATOR_SLUG);
   });
 
-  test("at least one shipped coworker is granted it", () => {
-    // A skill on no Bot is inert: it is in everybody's `/` menu and no run can act on it.
+  test("no default iPix coworker is granted authoring", () => {
+    // Intentional iPix policy: definitions are available for explicit authorized grants only.
     const holders = roster.agents.filter((agent) =>
       (agent.skills ?? []).includes(SKILL_CREATOR_SLUG),
     );
-    expect(holders.length).toBeGreaterThan(0);
+    expect(holders).toEqual([]);
   });
 
   test("its instruction names the tool that actually saves the skill", () => {

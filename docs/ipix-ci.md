@@ -37,7 +37,7 @@ but packaging and release operations do not run on ordinary web PRs.
 - Actual releases always verify Windows/macOS startup: full CI opts in, or the reuse path runs just the missing startup checks before publishing. Ordinary PRs/main stay Linux-only.
 - Before shipping a desktop release, explicitly run the applicable upgrade and
   all-platform packaging checks, then retain the protected signing flow. Inspect
-  the previous-release test output: no available earlier release is not a tested upgrade. Manual upgrade validation fails when there is no published baseline. Before the first iPix release, PR #5 owns the separately pinned upstream migration and recovery proof; do not treat this workflow's warning as proof.
+  the previous-release test output: no available earlier release is not a tested upgrade. Previous-release validation before the first iPix release uses the ADR-pinned upstream v1.1.2 baseline and verifies its tag and release assets. Historical window validation still requires published iPix releases. A failed baseline lookup fails the check; do not count a skipped upgrade as proof.
 - For model changes, verify selected engines and actual provider calls; missing
   provider secrets are skipped, not evidence of compatibility.
 - For Dockerfile changes request full-ci and verify the component build job.

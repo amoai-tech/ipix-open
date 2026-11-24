@@ -382,7 +382,11 @@ pub fn fetch_with(root: &Path, version: &str, get: Download) -> Result<(), Strin
 ///
 /// A pinned build lays out the commit its release was cut from, not a tag that could be moved.
 pub fn commit_tarball_url(commit: &str) -> String {
-    format!("https://github.com/CopilotKit/OpenBot/archive/{commit}.tar.gz")
+    let policy = crate::deployment_release::compiled_distribution();
+    format!(
+        "https://github.com/{}/archive/{commit}.tar.gz",
+        policy.repository
+    )
 }
 
 /// Lay out the commit a pinned build was cut from, with the images the build was compiled with.

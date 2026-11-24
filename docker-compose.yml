@@ -84,7 +84,24 @@ services:
     # The server, and nothing else in the image: the executable and its command, from the directory
     # the server reads its migrations from. Naming the entrypoint drops the image's own, and with it
     # everything else the image would have started.
-    entrypoint: ["/app/bin/openbot", "server"]
+    # Fail before starting the packaged server if its selected tenant package is missing.
+    # This also works for Desktop's bundled personal package, without a checkout mount.
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        for file in brand agents channels model knowledge; do
+          path="$${TENANT_PACKAGE_DIR}/$$file.yaml"
+          if [ ! -f "$$path" ] || [ ! -r "$$path" ] || [ ! -s "$$path" ]; then
+            message="Missing or unreadable tenant package file: $$path"
+            printf '%s\n' "$$message" >&2
+            if [ -n "$${OPENBOT_REFUSAL_FILE:-}" ]; then
+              printf '%s\n' "$$message" > "$$OPENBOT_REFUSAL_FILE" || true
+            fi
+            exit 78
+          fi
+        done
+        exec /app/bin/openbot server
     working_dir: /app/server
     # The deployment's settings, `.env`. Optional, because `docker compose config` and a first start
     # both come before anything wrote it. `scripts/start.sh` names a file of its own instead, `.env`
@@ -102,6 +119,8 @@ services:
       # is always 3001; the host port is the mapping's business, below.
       PORT: "3001"
       SERVER_PORT: "3001"
+      # Canonical iPix package; explicit personal/customer selections still win.
+      TENANT_PACKAGE_DIR: ${TENANT_PACKAGE_DIR:-../config/ipix}
       # Not production, as a host server is not. The image says production, and in production the
       # server refuses `AGENT_COMPUTER_ALLOW_PRIVATE_HOSTS`, which a local OpenBot needs: its
       # supervisor, computers and Bots are all at private addresses, on purpose. Empty rather than
@@ -229,6 +248,14 @@ services:
     # host user; any other uid there is one of their subordinate ids and cannot read the file.
     user: "${OPENBOT_SERVER_USER:-1001:1001}"
     volumes:
+      - type: bind
+        # Desktop distributions carry only Compose, and select their bundled personal package.
+        # Allow an empty mount there; the iPix loader still requires real package files.
+        source: ./config/ipix
+        target: /app/config/ipix
+        read_only: true
+        bind:
+          create_host_path: true
       # The directory, not the file: the server renews the token by writing a sibling and renaming it
       # over the original, which a single-file mount cannot take. Not created here, because Docker
       # would create it as root on Linux and the desktop could then not write its sign-in into it;

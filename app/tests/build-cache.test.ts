@@ -100,6 +100,18 @@ describe("production build cache", () => {
     },
   );
 
+  test("uses the canonical iPix package when no tenant path is configured", async () => {
+    await withProject(async (paths) => {
+      const brand = join(paths.rootDir, "config/ipix/brand.yaml");
+      await mkdir(join(paths.rootDir, "config/ipix"), { recursive: true });
+      await writeFile(brand, "product_name: iPix\n");
+      await writeBuildCacheManifest(paths, {});
+      expect(await isReusableBuild(paths, {})).toBe(true);
+      await writeFile(brand, "product_name: Changed\n");
+      expect(await isReusableBuild(paths, {})).toBe(false);
+    });
+  });
+
   test("rejects a build when Vite-exposed environment changes", async () => {
     await withProject(async (paths) => {
       await writeBuildCacheManifest(paths, { VITE_PUBLIC_NAME: "OpenBot" });

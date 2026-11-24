@@ -8,6 +8,14 @@ Newest first. `Unreleased` is what is on `main` and not yet tagged.
 
 ## Unreleased
 
+### iPix checkout
+
+- Fresh checkout uses the fashion package by default. Clean shipped configuration
+  can be upgraded; local customization remains protected. Compose refuses incomplete
+  tenant packages, and default fashion coworkers no longer offer Bot/skill authoring.
+  Knowledge source hints do not connect accounts.
+- Pinned Desktop builds fetch their source from the compiled distribution repository
+  instead of assuming the upstream OpenBot repository.
 - **iPix local agent setup is smaller.** Ten retired frameworks remain available as external AG-UI identities but are no longer offered for local installation. Mastra, both LangGraph engines and Claude subscription compatibility remain. Existing retired local choices receive an actionable error instead of silently changing the Bot.
 
 **Before upgrading.**

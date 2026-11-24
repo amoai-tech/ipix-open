@@ -35,6 +35,14 @@ https://github.com/user-attachments/assets/c60f07da-8b6d-46eb-a573-17fc1e65a644
 
 <p align="center"><sub>Watch a Bot use its browser and tools, answer with interactive results, and wait for your approval before it sends. Take over when it needs you, and connect the agents you already run.</sub></p>
 
+## iPix — main application
+
+This repository builds iPix, a fashion AI workspace on OpenBot. Run the checkout's
+web application with the [canonical iPix package](config/ipix/README.md). The
+upstream Fintech and Personal examples are retained for reference. The following
+upstream OpenBot setup and distribution documentation is retained for compatibility;
+its downloadable desktop builds are not iPix releases.
+
 ## Getting started
 
 ### On your laptop
@@ -463,7 +471,9 @@ A host on its own covers any port on that host; a host with a port pins that por
 
 The list covers agent endpoints only. Browsing is unaffected, the addresses holding a deployment's own cloud credentials are refused whatever is listed, and listing an address permits registering an agent there rather than granting that agent anything.
 
-Tenant package agents are declared in the package's own `agents.yaml`, in the directory `TENANT_PACKAGE_DIR` names (`examples/fintech` by default), or each in a file of its own under that package's `agents/` directory, as one of:
+The main iPix web application configuration is [config/ipix](config/ipix/README.md). The original examples remain reference material.
+
+Tenant package agents are declared in the package's own `agents.yaml`, in the directory `TENANT_PACKAGE_DIR` names (`config/ipix` by default for this checkout), or each in a file of its own under that package's `agents/` directory, as one of:
 
 - `built-in`, with a system prompt;
 - `remote-ag-ui`, with an endpoint; or
@@ -509,7 +519,7 @@ Settings worth knowing:
 | `AGENT_COMPUTER_POLICY`              | JSON action policy. Malformed JSON stops server startup.                  |
 | `AGENT_COMPUTER_ALLOW_PRIVATE_HOSTS` | Lets a Bot reach this machine's own services. Local only, and refused under `NODE_ENV=production`. |
 | `AGENT_ENDPOINT_ALLOWED_HOSTS`       | Private addresses an agent may be registered at, comma separated. A host, optionally with a port. |
-| `TENANT_PACKAGE_DIR`                 | Directory containing tenant YAML. Defaults to `../examples/fintech`.      |
+| `TENANT_PACKAGE_DIR`                 | Directory containing tenant YAML. Checkout default: `../config/ipix`.      |
 | `DEPLOYMENT_ID`                      | Names this deployment when two share one Intelligence project.            |
 | `OPENBOT_SELF_HOST_BANNER`           | Set `false` to hide the bar offering CopilotKit's help self-hosting OpenBot. It never shows on a paid Intelligence plan. |
 

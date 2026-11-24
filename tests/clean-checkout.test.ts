@@ -7,18 +7,16 @@ import { join } from "node:path";
 const root = join(import.meta.dir, "..");
 
 describe("a clone that has only run bun install", () => {
-  test("can read the example tenant package with nothing set", () => {
+  test("can read the default iPix tenant package with nothing set", () => {
     // `pretest` loads this package, so a name here with no fallback fails the suite before a single
     // test runs.
-    const agents = readFileSync(
-      join(root, "examples/fintech/agents.yaml"),
-      "utf8",
-    );
+    const agents = readFileSync(join(root, "config/ipix/agents.yaml"), "utf8");
     const referenced = [
       ...agents.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)([^}]*)\}/g),
     ];
 
-    expect(referenced.length).toBeGreaterThan(0);
+    // A package with no environment references is also valid on a fresh checkout.
+    expect(agents).toContain("type: built-in");
     for (const [, name, rest] of referenced) {
       expect(
         rest.startsWith(":-"),

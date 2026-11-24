@@ -226,7 +226,7 @@ jobs:
       matrix:
         image: ${{ fromJSON(needs.components.outputs.components) }}
         platform:
-          # The 16-core larger runner: these builds are CPU-bound, and a release waits on them.
+          # Keep each architecture on its native standard runner.
           - arch: amd64
             runner: ubuntu-latest
           - arch: arm64
