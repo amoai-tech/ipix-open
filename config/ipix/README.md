@@ -37,7 +37,9 @@ Fintech example. Upstream examples remain unchanged for upgrades and comparison.
   certify cleanup of existing database state.
 - Neither default coworker is granted bot-creator or skill-creator. Their definitions
   are retained for explicit authorized operator grants; ordinary fashion conversations
-  do not offer authoring tools. Existing user-edited grants must be checked separately.
+  do not offer authoring tools. The native slash menu lists granted skills only;
+  the skill catalog summaries explain the required operator grant. Existing
+  user-edited grants must be checked separately.
   OpenBot's own user permissions and human confirmation still govern actual writes.
 - Knowledge YAML is validated metadata, not a connected data source. Google Drive
   and Notion require the person's authorized Connections and applicable Bot grants.

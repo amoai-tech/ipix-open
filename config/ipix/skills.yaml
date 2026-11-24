@@ -103,7 +103,7 @@ skills:
   # Authoring definitions remain available for explicit operator grants; no default iPix Bot holds them.
   - slug: skill-creator
     title: Write a skill
-    summary: Interview me about a skill I want, then write it and save it as a new skill.
+    summary: Write and save a skill with your approval. Requires an explicit operator grant to the selected coworker.
     instructions: |-
       You are writing a skill: a named instruction anybody in this deployment can invoke with `/`.
       Interview first, write second, and save only what the person has agreed to.
@@ -201,7 +201,7 @@ skills:
   # MCP GRANTS, so naming them would name nothing. The grant of this skill is the whole gate.
   - slug: bot-creator
     title: Make a Bot
-    summary: Work out what a new Bot should be, then put it in front of you to create.
+    summary: Draft a coworker for your approval. Requires an explicit operator grant to the selected coworker.
     instructions: >-
       You are working out what a new coworker should be, and the interview matters more than the
       speed: what you write becomes standing instructions handed to a model on every turn in every

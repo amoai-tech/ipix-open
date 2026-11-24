@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { pluginKeys } from "@/lib/plugins/queries";
-import { useAnyBotSkillCommands } from "@/lib/plugins/skill-commands";
+import {
+  useAnyBotSkillCommands,
+  useSkillCommands,
+} from "@/lib/plugins/skill-commands";
 
 /**
  * The home page's `/` menu: every skill any of the person's Bots offers, by name, and a message that
@@ -34,6 +37,68 @@ function wrapper(skills: Record<string, (typeof standup)[]>) {
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
 }
+
+describe("authoring skill commands", () => {
+  const authoring = [
+    {
+      ...standup,
+      slug: "bot-creator",
+      title: "Make a Bot",
+      summary: "Requires an explicit operator grant",
+    },
+    {
+      ...standup,
+      slug: "skill-creator",
+      title: "Write a skill",
+      summary: "Requires an explicit operator grant",
+    },
+  ];
+  test("ungranted authoring commands are absent on home and coworker composers", () => {
+    const wrap = wrapper({ production: [standup], knowledge: [] });
+    const { result } = renderHook(
+      () => ({
+        home: useAnyBotSkillCommands(["production", "knowledge"]),
+        production: useSkillCommands("production"),
+        knowledge: useSkillCommands("knowledge"),
+      }),
+      { wrapper: wrap },
+    );
+    expect(result.current.home.commands.map((command) => command.id)).toEqual([
+      "standup",
+    ]);
+    expect(result.current.production.map((command) => command.id)).toEqual([
+      "standup",
+    ]);
+    expect(result.current.knowledge).toEqual([]);
+    for (const skill of authoring)
+      expect(result.current.home.botsFor(skill.slug)).toEqual([]);
+  });
+  test("an explicit grant exposes authoring only through the granted coworker", () => {
+    const { result } = renderHook(
+      () => ({
+        home: useAnyBotSkillCommands(["production", "operator"]),
+        production: useSkillCommands("production"),
+        operator: useSkillCommands("operator"),
+      }),
+      { wrapper: wrapper({ production: [standup], operator: authoring }) },
+    );
+    expect(result.current.production.map((command) => command.id)).toEqual([
+      "standup",
+    ]);
+    expect(result.current.operator.map((command) => command.id)).toEqual([
+      "bot-creator",
+      "skill-creator",
+    ]);
+    for (const skill of authoring) {
+      expect(result.current.home.botsFor(skill.slug)).toEqual(["operator"]);
+      expect(
+        result.current.home.commands.find(
+          (command) => command.id === skill.slug,
+        )?.description,
+      ).toContain("operator grant");
+    }
+  });
+});
 
 describe("useAnyBotSkillCommands", () => {
   test("lists each skill once, by name, and knows which Bots offer it", () => {

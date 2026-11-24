@@ -785,6 +785,58 @@ async function stopOwnedHost(
   if (owned.length) await run(["kill", "-TERM", ...owned], { cwd: root });
 }
 
+/** Reuse the same source ownership checks at planning and immediately before installation. */
+async function assertSourceUpdateSafe(
+  root: string,
+  env: NodeJS.ProcessEnv,
+  customerPaths: string[],
+  currentCommit: string,
+  targetCommit: string,
+  run: CommandRunner,
+): Promise<string[]> {
+  const head = (await run(["git", "rev-parse", "HEAD"], { cwd: root })).trim();
+  if (head !== currentCommit)
+    throw new Error(
+      "Checkout differs from accepted distribution baseline; run scripts/integrate-upstream.ts in an isolated candidate before applying",
+    );
+  if (
+    (
+      await run(["git", "status", "--porcelain", "--untracked-files=no"], {
+        cwd: root,
+      })
+    ).trim()
+  )
+    throw new Error(
+      "Locally modified tracked source requires isolated upstream integration before applying",
+    );
+  await run(["git", "merge-base", "--is-ancestor", head, targetCommit], {
+    cwd: root,
+  });
+  const cleanIPix = await cleanShippedIPixPackage(root, run);
+  const paths = protectedPaths(root, env, customerPaths, cleanIPix);
+  const changed = (
+    await run(["git", "diff", "--name-only", "-z", head, targetCommit], {
+      cwd: root,
+    })
+  )
+    .split("\0")
+    .filter(Boolean);
+  if (
+    changed.some((path) => covers(path, "config/ipix")) &&
+    existsSync(join(root, "config/ipix")) &&
+    !cleanIPix
+  )
+    paths.push("config/ipix");
+  const collisions = changed.filter((path) =>
+    paths.some((protectedPath) => covers(path, protectedPath)),
+  );
+  if (collisions.length)
+    throw new Error(
+      `Candidate changes customer-owned paths: ${collisions.join(", ")}; integrate these changes explicitly`,
+    );
+  return paths;
+}
+
 async function inspect(
   options: LocalUpdateOptions,
   lockHeld: boolean,
@@ -849,48 +901,14 @@ async function inspect(
       throw new Error(
         "Unknown source layout: installation must be the Git checkout root",
       );
-    const head = (
-      await run(["git", "rev-parse", "HEAD"], { cwd: root })
-    ).trim();
-    if (head !== current.source.commit)
-      throw new Error(
-        "Checkout differs from accepted distribution baseline; run scripts/integrate-upstream.ts in an isolated candidate before applying",
-      );
-    if (
-      (
-        await run(["git", "status", "--porcelain", "--untracked-files=no"], {
-          cwd: root,
-        })
-      ).trim()
-    )
-      throw new Error(
-        "Locally modified tracked source requires isolated upstream integration before applying",
-      );
-    await run(
-      ["git", "merge-base", "--is-ancestor", head, candidate.source.commit],
-      { cwd: root },
-    );
-    plan.protectedPaths = protectedPaths(
+    plan.protectedPaths = await assertSourceUpdateSafe(
       root,
       env,
       options.customerPaths ?? [],
-      await cleanShippedIPixPackage(root, run),
+      current.source.commit,
+      candidate.source.commit,
+      run,
     );
-    const changed = (
-      await run(
-        ["git", "diff", "--name-only", "-z", head, candidate.source.commit],
-        { cwd: root },
-      )
-    )
-      .split("\0")
-      .filter(Boolean);
-    const collisions = changed.filter((path) =>
-      plan.protectedPaths.some((protectedPath) => covers(path, protectedPath)),
-    );
-    if (collisions.length)
-      throw new Error(
-        `Candidate changes customer-owned paths: ${collisions.join(", ")}; integrate these changes explicitly`,
-      );
     if (!candidate.artifacts.images.server)
       throw new Error("Release has no digest-pinned server image");
     const before = readConfiguration(
@@ -1218,9 +1236,37 @@ export async function applyLocalUpdate(
       composeProject: initial.composeProject,
     });
     phase("installing");
-    await run(["git", "merge", "--ff-only", initial.targetCommit], {
-      cwd: root,
-    });
+    // Image pulls and backups may take time. A customer can edit the checkout in
+    // that window, so recheck ownership before Git touches any source file.
+    const finalProtectedPaths = await assertSourceUpdateSafe(
+      root,
+      environment(root),
+      options.customerPaths ?? [],
+      initial.currentCommit,
+      initial.targetCommit,
+      run,
+    );
+    if (
+      !verified.protectedPaths.some((path) => covers("config/ipix", path)) &&
+      finalProtectedPaths.some((path) => covers("config/ipix", path))
+    )
+      throw new Error(
+        "iPix configuration became customer-owned during the update; integrate these changes explicitly",
+      );
+    // Git normally overwrites ignored files. Refuse such collisions even if a
+    // file appears after the last inspection (git-merge --no-overwrite-ignore).
+    await run(
+      [
+        "git",
+        "merge",
+        "--ff-only",
+        "--no-overwrite-ignore",
+        initial.targetCommit,
+      ],
+      {
+        cwd: root,
+      },
+    );
     installed = true;
     const activatedConfiguration = readConfiguration(
       await run(

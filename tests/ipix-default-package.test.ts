@@ -78,6 +78,12 @@ describe("canonical iPix application package", () => {
   });
 
   test("default assistants have no authoring grants and knowledge metadata is not OneDrive", () => {
+    for (const slug of ["bot-creator", "skill-creator"]) {
+      const skill = read("skills.yaml").skills.find(
+        (s: { slug: string }) => s.slug === slug,
+      );
+      expect(skill.summary).toContain("Requires an explicit operator grant");
+    }
     for (const agent of read("agents.yaml").agents) {
       expect(agent.skills ?? []).not.toContain("bot-creator");
       expect(agent.skills ?? []).not.toContain("skill-creator");

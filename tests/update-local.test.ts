@@ -38,7 +38,12 @@ const EARLIER_COMPOSE = "services:\n  postgres:\n    image: postgres:17\n";
 const SERVER_DOES_THE_WORK_COMPOSE = `x-openbot-scheduled-work: server\n${EARLIER_COMPOSE}`;
 function fixture(
   topology: "host" | "image" = "image",
-  compose: { installed?: string; candidate?: string; ipix?: boolean } = {},
+  compose: {
+    installed?: string;
+    candidate?: string;
+    ipix?: boolean;
+    ipixChanges?: boolean;
+  } = {},
 ) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "openbot-update-")));
   roots.push(root);
@@ -65,8 +70,11 @@ function fixture(
     join(root, "docker-compose.yml"),
     compose.candidate ?? compose.installed ?? EARLIER_COMPOSE,
   );
-  if (compose.ipix)
+  if (compose.ipix && compose.ipixChanges !== false) {
     writeFileSync(join(root, "config/ipix/brand.yaml"), "new\n");
+    writeFileSync(join(root, "config/ipix/new.yaml"), "release\n");
+    git("add", "config/ipix/new.yaml");
+  }
   git("commit", "--quiet", "-am", "candidate");
   const target = git("rev-parse", "HEAD");
   git("checkout", "--quiet", "--detach", old);
@@ -210,6 +218,86 @@ test("iPix local additions and explicitly protected package refuse release colli
     expect(f.git("rev-parse", "HEAD")).toBe(f.old);
     expect(f.calls.some((c) => c.includes(" stop "))).toBe(false);
   }
+});
+
+test("late iPix additions or edits after backup refuse before source installation", async () => {
+  for (const kind of [
+    "extra",
+    "ignored candidate path",
+    "untracked candidate path",
+    "tracked edit",
+  ]) {
+    const f = fixture("image", { ipix: true });
+    const path =
+      kind === "tracked edit"
+        ? "brand.yaml"
+        : kind === "extra"
+          ? "local.yaml"
+          : "new.yaml";
+    const local = join(f.root, "config/ipix", path);
+    if (kind === "ignored candidate path")
+      writeFileSync(
+        join(f.root, ".git/info/exclude"),
+        "config/ipix/new.yaml\n",
+      );
+    const run: CommandRunner = async (command, options) => {
+      const result = await f.run(command, options);
+      if (command.includes("pg_restore")) writeFileSync(local, "customer\n");
+      return result;
+    };
+    await expect(applyLocalUpdate({ ...f.options, run })).rejects.toThrow(
+      "Update failed",
+    );
+    expect(readFileSync(local, "utf8")).toBe("customer\n");
+    expect(f.git("rev-parse", "HEAD")).toBe(f.old);
+    expect(f.calls.some((c) => c.startsWith("git merge --ff-only"))).toBe(
+      false,
+    );
+    expect(f.calls.some((c) => c.includes("--exit-code-from"))).toBe(false);
+    expect(
+      JSON.parse(
+        readFileSync(join(f.root, ".openbot-update-journal.json"), "utf8"),
+      ).databaseMayHaveChanged,
+    ).toBe(false);
+  }
+});
+
+test("a formerly clean default package becoming customer-owned stops even an unrelated release", async () => {
+  const f = fixture("image", { ipix: true, ipixChanges: false });
+  const local = join(f.root, "config/ipix/local.yaml");
+  const run: CommandRunner = async (command, options) => {
+    const result = await f.run(command, options);
+    if (command.includes("pg_restore")) writeFileSync(local, "customer\n");
+    return result;
+  };
+  await expect(applyLocalUpdate({ ...f.options, run })).rejects.toThrow(
+    "became customer-owned",
+  );
+  expect(readFileSync(local, "utf8")).toBe("customer\n");
+  expect(f.git("rev-parse", "HEAD")).toBe(f.old);
+  expect(f.calls.some((c) => c.startsWith("git merge --ff-only"))).toBe(false);
+});
+
+test("Git refuses an ignored candidate collision appearing at merge time", async () => {
+  const f = fixture("image", { ipix: true });
+  const local = join(f.root, "config/ipix/new.yaml");
+  writeFileSync(join(f.root, ".git/info/exclude"), "config/ipix/new.yaml\n");
+  const run: CommandRunner = async (command, options) => {
+    if (command[0] === "git" && command[1] === "merge")
+      writeFileSync(local, "customer late\n");
+    return f.run(command, options);
+  };
+  await expect(applyLocalUpdate({ ...f.options, run })).rejects.toThrow(
+    "Update failed",
+  );
+  expect(
+    f.calls.some((c) =>
+      c.startsWith("git merge --ff-only --no-overwrite-ignore "),
+    ),
+  ).toBe(true);
+  expect(readFileSync(local, "utf8")).toBe("customer late\n");
+  expect(f.git("rev-parse", "HEAD")).toBe(f.old);
+  expect(f.calls.some((c) => c.includes("--exit-code-from"))).toBe(false);
 });
 
 test("dirty shipped iPix tracked configuration still refuses before mutation", async () => {
