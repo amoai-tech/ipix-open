@@ -309,7 +309,7 @@ jobs:
   checks:
     needs: [metadata, verify, gate]
     if: needs.metadata.outputs.is_release == 'true' && needs.gate.outputs.full_checks == 'true'
-    uses: $/.github/workflows/ci.yml
+    uses: ./.github/workflows/ci.yml
     permissions:
       contents: read
       # CI's `changes` job asks for it, and a called job cannot have more than its caller grants. On
@@ -332,7 +332,7 @@ jobs:
       needs.verify.result == 'success' && needs.gate.result == 'success' &&
       (needs.checks.result == 'success' ||
        (needs.checks.result == 'skipped' && needs.gate.outputs.full_checks == 'false'))
-    uses: $/.github/workflows/images.yml
+    uses: ./.github/workflows/images.yml
     with:
       ref: ${{ github.sha }}
       tags: ${{ needs.metadata.outputs.version }}
@@ -365,7 +365,7 @@ jobs:
     if: >-
       !cancelled() && needs.metadata.outputs.prerelease == 'true' &&
       needs.images.result == 'success'
-    uses: $/.github/workflows/desktop-build.yml
+    uses: ./.github/workflows/desktop-build.yml
     with:
       ref: ${{ github.sha }}
       channel: release

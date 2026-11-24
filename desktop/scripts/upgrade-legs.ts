@@ -87,10 +87,13 @@ export function windowLegs(
 async function firstOneApiRelease(
   releases: readonly Release[],
 ): Promise<string | undefined> {
+  const repository = process.env.GITHUB_REPOSITORY || "CopilotKit/OpenBot";
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository))
+    throw new Error("Invalid release repository");
   let first: string | undefined;
   for (const release of stable(releases)) {
     const response = await fetch(
-      `https://raw.githubusercontent.com/CopilotKit/OpenBot/${release.tagName}/api/openapi.yaml`,
+      `https://raw.githubusercontent.com/${repository}/${release.tagName}/api/openapi.yaml`,
       { method: "HEAD" },
     );
     if (response.status === 404) break;

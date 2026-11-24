@@ -42,7 +42,7 @@ jobs:
   legs:
     name: releases to upgrade from
     if: github.event_name != 'pull_request'
-    runs-on: openbot-ubuntu-16core
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       releases: ${{ steps.legs.outputs.releases }}
@@ -60,6 +60,9 @@ jobs:
           set -euo pipefail
           gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --exclude-drafts --json tagName,publishedAt,isPrerelease > "$RUNNER_TEMP/releases.json"
           releases="$(bun desktop/scripts/upgrade-legs.ts window --releases "$RUNNER_TEMP/releases.json")"
+          # Before iPix publishes its own release, exercise the pinned upstream baseline
+          # rather than letting the nightly job silently skip the only upgrade path.
+          if [ "$releases" = '[]' ]; then releases='["previous"]'; fi
           echo "Upgrading from (window): $releases"
           echo "releases=$releases" >> "$GITHUB_OUTPUT"
 
@@ -68,7 +71,7 @@ jobs:
     needs: legs
     # `legs` is skipped on a pull request, so this runs unless the run was cancelled.
     if: ${{ !cancelled() && (github.event_name == 'pull_request' || (needs.legs.result == 'success' && needs.legs.outputs.releases != '[]')) }}
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -86,8 +89,8 @@ jobs:
         if: matrix.release == 'previous'
         with:
           bun-version: 1.4.3
-      # On a pull request, the newest published release at or below this tree's version; none when
-      # nothing has been published below it, and then there is nothing to upgrade from.
+      # On a pull request, prefer the newest published iPix release at or below this version.
+      # Before the first iPix release, explicitly migrate from the pinned upstream baseline.
       - id: from
         name: The release to upgrade from
         env:
@@ -95,11 +98,22 @@ jobs:
           RELEASE: ${{ matrix.release }}
         run: |
           set -euo pipefail
+          repository="$GITHUB_REPOSITORY"
           if [ "$RELEASE" = previous ]; then
-            gh release list --repo "$GITHUB_REPOSITORY" --limit 1000 --exclude-drafts --json tagName,publishedAt,isPrerelease > "$RUNNER_TEMP/releases.json"
+            gh release list --repo "$repository" --limit 1000 --exclude-drafts --json tagName,publishedAt,isPrerelease > "$RUNNER_TEMP/releases.json"
             RELEASE="$(bun desktop/scripts/upgrade-legs.ts previous --releases "$RUNNER_TEMP/releases.json" | jq -r '.[0] // empty')"
+            if [ -z "$RELEASE" ]; then
+              repository=CopilotKit/OpenBot
+              RELEASE=v1.1.2
+              # Explicit migration baseline from ADR 001; fail rather than report a false pass.
+              gh release view "$RELEASE" --repo "$repository" --json isDraft,isPrerelease,assets | jq -e '(.isDraft | not) and (.isPrerelease | not) and any(.assets[]; .name == "container-images.json")' >/dev/null
+              # The ADR's inspected source baseline; reject a moved tag.
+              baseline="$(gh api "repos/$repository/git/ref/tags/$RELEASE" --jq '.object.sha')"
+              test "$baseline" = "8826a0fe3827b80c519b6b8a274e74efbaef7868"
+            fi
           fi
-          echo "Upgrading from: ${RELEASE:-no earlier release, nothing to upgrade}"
+          echo "Upgrading from: $repository@$RELEASE"
+          echo "repository=$repository" >> "$GITHUB_OUTPUT"
           echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         if: steps.from.outputs.release != ''
@@ -134,6 +148,9 @@ jobs:
         working-directory: desktop/src-tauri
         env:
           OPENBOT_UPGRADE_FROM: ${{ steps.from.outputs.release }}
+          OPENBOT_UPGRADE_FROM_REPOSITORY: ${{ steps.from.outputs.repository }}
+          # Compile the candidate's distribution, never request an iPix commit from upstream.
+          OPENBOT_RELEASE_REPOSITORY: ${{ github.repository }}
           OPENBOT_UPGRADE_TO_COMMIT: ${{ env.COMMIT }}
         run: |
           set -euo pipefail

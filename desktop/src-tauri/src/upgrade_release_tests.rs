@@ -414,6 +414,21 @@ fn an_installation_on_a_release_upgrades_to_this_tree_with_its_data_and_each_mig
 
     let mut installation = Installation::new(stand_in_intelligence());
 
+    // The first iPix release migrates from an explicitly selected upstream baseline.
+    // Use the existing installation distribution for the old release; the candidate
+    // pinned archive uses its compiled distributor, not this historical setting.
+    if let Ok(repository) = std::env::var("OPENBOT_UPGRADE_FROM_REPOSITORY") {
+        let policy =
+            crate::deployment_release::distribution_defaults(None, Some(&repository), None);
+        std::fs::write(
+            installation
+                .root
+                .join(crate::deployment_release::DISTRIBUTION),
+            serde_json::to_vec(&policy).expect("valid baseline distribution"),
+        )
+        .expect("write isolated baseline distribution");
+    }
+
     // The release, laid out, installed and started as a first Install and Start leave it.
     installation.target = Target::Release(from.clone());
     installation.lay_out().expect("the release lays out");

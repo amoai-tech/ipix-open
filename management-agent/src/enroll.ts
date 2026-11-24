@@ -169,7 +169,11 @@ export function checkCredentials(cert: string, key: string): string {
     throw new EnrollmentRefused("the certificate is not an install's");
   let ours: Buffer;
   try {
-    ours = createPublicKey(createPrivateKey(key)).export({
+    // Validate the private half first; PEM is supported by the pinned Node/Bun types.
+    const privateKey = createPrivateKey(key);
+    ours = createPublicKey(
+      privateKey.export({ type: "pkcs8", format: "pem" }),
+    ).export({
       type: "spki",
       format: "der",
     });

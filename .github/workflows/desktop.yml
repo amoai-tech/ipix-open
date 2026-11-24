@@ -39,7 +39,7 @@ jobs:
   # moves only the versions. Any other event builds everything.
   changes:
     name: changes
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       actions: read
@@ -68,7 +68,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.core == 'true'
     # Clippy over the whole crate is CPU-bound: the 16-core larger runner, except for forks.
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -108,7 +108,7 @@ jobs:
     name: live (${{ matrix.suite }})
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || 'openbot-ubuntu-16core' }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -177,7 +177,7 @@ jobs:
     name: app
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    uses: $/.github/workflows/desktop-build.yml
+    uses: ./.github/workflows/desktop-build.yml
     with:
       ref: ${{ github.event.pull_request.head.sha || github.sha }}
       channel: internal

@@ -99,7 +99,8 @@ export function readSigningKey(keyPath: string, manifestKey: unknown): string {
     throw new StorePackageError(`${keyPath} is not a private key in PEM form.`);
   }
   const expected = publicKeyFromManifest(manifestKey);
-  const actual = createPublicKey(key);
+  const privatePem = key.export({ type: "pkcs8", format: "pem" }).toString();
+  const actual = createPublicKey(privatePem);
   if (
     !actual
       .export({ type: "spki", format: "der" })
@@ -108,7 +109,7 @@ export function readSigningKey(keyPath: string, manifestKey: unknown): string {
     throw new StorePackageError(
       `The key at ${keyPath} gives the id ${extensionIdFor(actual)}, not the built Recorder's ${extensionIdFor(expected)}. Use the key that matches extension/keys/public-key.txt.`,
     );
-  return key.export({ type: "pkcs8", format: "pem" }).toString();
+  return privatePem;
 }
 
 function listFiles(dir: string): string[] {
