@@ -1,6 +1,6 @@
 /** Documentation-only checks: no RLS runtime write, skill invocation, or security certification. */
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
@@ -66,6 +66,17 @@ test("cross-tenant authorization and red/green persistence proof are required", 
     expect(sec.toLowerCase()).toContain(value.toLowerCase());
   expect(tdd).not.toContain("`root-cause-debugging`");
   expect(tdd).toContain("installed Bun runner");
+  for (const source of [sec, tdd]) {
+    const siblingNames = [
+      ...source.matchAll(/`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`/g),
+    ]
+      .map((match) => match[1])
+      .filter((name) => name !== "ipix-open");
+    for (const name of siblingNames)
+      expect(existsSync(join(root, ".claude/skills", name, "SKILL.md"))).toBe(
+        true,
+      );
+  }
   for (const value of [
     "RED",
     "GREEN",
