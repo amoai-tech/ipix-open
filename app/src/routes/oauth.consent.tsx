@@ -1,14 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { isOAuthEnabled } from "@/features/ipix-oauth/environment";
 import { OAuthConsent } from "@/features/ipix-oauth/oauth-consent";
 
 export const Route = createFileRoute("/oauth/consent")({
   component: ConsentPage,
 });
 function ConsentPage() {
-  if (
-    !import.meta.env.DEV ||
-    import.meta.env.VITE_SUPABASE_URL !== "http://127.0.0.1:56121"
-  ) {
+  if (!isOAuthEnabled()) {
     return (
       <main className="p-6">
         iPix OAuth is not enabled for this environment.

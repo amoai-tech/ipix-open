@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/features/ipix-oauth/client";
+import { isOAuthEnabled } from "@/features/ipix-oauth/environment";
 import { safeNextPath } from "@/features/ipix-oauth/safe-next-path";
 
 export const Route = createFileRoute("/oauth/login")({ component: LoginPage });
@@ -38,10 +39,7 @@ function LoginPage() {
       setPassword("");
     }
   }
-  if (
-    !import.meta.env.DEV ||
-    import.meta.env.VITE_SUPABASE_URL !== "http://127.0.0.1:56121"
-  )
+  if (!isOAuthEnabled())
     return (
       <main className="p-6">
         iPix OAuth is not enabled for this environment.

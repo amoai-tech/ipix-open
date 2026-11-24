@@ -139,3 +139,35 @@ facilities before adding infrastructure. Prove all exposed RPCs, REST and
 GraphQL surfaces, and hosted Storage independently. Do not deploy a global
 revoke or the test-only function rewrite. Keep the existing resource-bound
 issuer requirement. The issuer and data authorization gates are independent.
+
+## Hosted QA consent setup (explicit opt-in)
+
+The existing React consent/login routes and Supabase client share one deployment
+configuration guard in `app/src/features/ipix-oauth/environment.ts`. Default
+builds and the known production origin/project remain disabled. This is a build
+configuration guard, not a replacement for server-side authorization or RLS.
+
+1. Select an approved dedicated synthetic QA Supabase project and HTTPS frontend
+   origin. Do not use the current production project or Railway pilot domain.
+2. Before building the frontend, supply these public Vite variables in the QA
+   build environment (not just the running container):
+   - `VITE_IPIX_OAUTH_QA_ORIGIN`: exact HTTPS origin, without trailing slash.
+   - `VITE_IPIX_OAUTH_QA_PROJECT_REF`: dedicated QA project's reference.
+   - `VITE_SUPABASE_URL`: `https://<QA_PROJECT_REF>.supabase.co`.
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`: that project's publishable key only.
+3. Build and deploy this exact frontend revision to that QA origin. The existing
+   `/oauth/login` and `/oauth/consent` routes must render, with all other origins
+   denied. Keep the current production Site URL unchanged.
+4. In the QA Supabase dashboard: Authentication > URL Configuration > Site URL
+   = the approved QA origin; Authentication > OAuth Server > Enable, Authorization
+   Path = `/oauth/consent`, dynamic OAuth apps enabled for reviewed registration.
+5. Run the real authorization journey: login, consent approval and denial,
+   callback, signed token exchange/refresh, tenant and direct-API restrictions.
+   Do not mark hosted authentication done until these tests pass.
+
+ADAPT https://supabase.com/library/docs/react/oauth-consent (React route and
+Supabase login/session reuse) and https://supabase.com/docs/guides/auth/oauth-server/getting-started
+(Site URL and authorization path). Do not install the Next.js block or overwrite
+existing client/auth code. Existing localhost QA remains on 127.0.0.1:4175 and
+127.0.0.1:56121. The new unit tests prove configuration acceptance and rejection;
+no real hosted QA deployment or signed resource-bound issuance has been proved.
