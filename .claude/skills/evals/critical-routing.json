@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "scope": "developer-time Claude Code skills; no runtime AI agent or customer data",
+  "cases": [
+    {
+      "id": "mastra-migration",
+      "skill": "mastra",
+      "shouldTrigger": true,
+      "prompt": "In this ipix-open branch, plan how to port the real iPix Production Planner and its six-outfit shoot workflow into an isolated service in this repository. Check the bundled generic Mastra harness as a reference, not a destination for brand tools or credentials. Show auth and QA memory proof before coding.",
+      "expected": "Requires an isolated iPix Planner service inside ipix-open, with agent-mastra used as REFERENCE ONLY; source-only legacy code, isolated QA memory and verified per-user authorization STOP gates."
+    },
+    {
+      "id": "mastra-demo-negative",
+      "skill": "mastra",
+      "shouldTrigger": false,
+      "prompt": "In OpenBot's existing demo agent-mastra harness only, correct the prose in its welcome prompt; do not change the iPix Production Planner or its migration.",
+      "expected": "Should not automatically load the iPix Production Planner migration skill."
+    },
+    {
+      "id": "copilotkit-proposal",
+      "skill": "copilotkit",
+      "shouldTrigger": true,
+      "prompt": "Our fashion producer wants an editable six-outfit shot-list table inside the existing OpenBot Bot conversation. Before a new renderer, find the actual CopilotKit v2 UI provider and OPENBOT_UI components, and explain how an approved edit is saved.",
+      "expected": "Uses provider.tsx and a2ui.ts v2 entry points, native UI/galleries first, and separates browser display from server-approved domain save."
+    },
+    {
+      "id": "copilotkit-negative",
+      "skill": "copilotkit",
+      "shouldTrigger": false,
+      "prompt": "Fix the heading punctuation in OpenBot Desktop's Settings dialog; no chat, generated UI, Bot or agent changes.",
+      "expected": "Should prefer openbot-copy or direct text correction over the CopilotKit skill."
+    },
+    {
+      "id": "supabase-denial",
+      "skill": "ipix-supabase",
+      "shouldTrigger": true,
+      "prompt": "For the new standalone ipix-open app, show how a synthetic Brand A user attempting Brand B's shoot ID is blocked, using matching QA Supabase Auth and RLS and a verified per-user identity.",
+      "expected": "Requires dedicated nonproduction project, verified token, live membership, server business authorization, RLS and direct-bypass negative tests."
+    },
+    {
+      "id": "supabase-negative",
+      "skill": "ipix-supabase",
+      "shouldTrigger": false,
+      "prompt": "Change the hover color of an existing OpenBot configuration button, without touching API, data, identity, SQL or tenant permissions.",
+      "expected": "Should not load iPix Supabase skill."
+    },
+    {
+      "id": "verifier-docs",
+      "skill": "task-verifier",
+      "shouldTrigger": true,
+      "prompt": "Audit PR #1's docs-only skill edits against acceptance criteria and tell us which Done gates apply. Do not claim runtime Planner or RLS tests that were not executed.",
+      "expected": "Reports exact-head static checks, N/A with reasons for unchanged runtime gates, and NOT VERIFIED for real skill activation."
+    },
+    {
+      "id": "verifier-negative",
+      "skill": "task-verifier",
+      "shouldTrigger": false,
+      "prompt": "Brainstorm three possible names for a new fashion campaign; this is just ideation, no PR or task completion check.",
+      "expected": "Should not invoke an implementation-completion verifier."
+    },
+    {
+      "id": "qa-seven-risks",
+      "skill": "qa-review",
+      "shouldTrigger": true,
+      "prompt": "Review this code change as a PR and report every independently evidenced merge risk even if you find seven; propose only the five highest-value actor/action/expected-result tests.",
+      "expected": "No five-risk cap; at most five suggested tests with PASS/FAIL/NOT VERIFIED and evidenced risk classifications."
+    },
+    {
+      "id": "qa-negative",
+      "skill": "qa-review",
+      "shouldTrigger": false,
+      "prompt": "Draw a quick ASCII wireframe for a mobile fashion asset card; do not perform a PR or risk review.",
+      "expected": "Should select ipix-wireframe instead of QA Review."
+    },
+    {
+      "id": "ponytail-reuse",
+      "skill": "ponytail",
+      "shouldTrigger": true,
+      "prompt": "A developer proposes installing a second React state library just to store the selected gallery tab in OpenBot. Is that necessary, or can we reuse existing app state? Find the smallest safe implementation.",
+      "expected": "Checks current React, query and component reuse before any new dependency while retaining security and regression tests."
+    },
+    {
+      "id": "ponytail-negative",
+      "skill": "ponytail",
+      "shouldTrigger": false,
+      "prompt": "Read the existing OpenBot UI copy and correct a one-word spelling error. No architecture or library choice is involved.",
+      "expected": "Should not load Ponytail for an ordinary one-word copy fix."
+    }
+  ]
+}

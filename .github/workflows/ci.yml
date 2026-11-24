@@ -6,7 +6,17 @@ on:
     branches: [main]
   # Callable, so publishing a release runs these same checks against the release commit rather than
   # trusting that they ran somewhere earlier.
+  workflow_dispatch:
+    inputs:
+      cross_platform_startup:
+        description: Also test Windows and macOS startup
+        type: boolean
+        default: false
   workflow_call:
+    inputs:
+      cross_platform_startup:
+        type: boolean
+        default: false
 
 # Least privilege by default. Jobs that need more must declare it locally.
 permissions:
@@ -28,8 +38,7 @@ concurrency:
   group: ${{ format('ci-{0}-{1}', github.workflow, github.ref == 'refs/heads/main' && github.sha || github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# iPix uses standard GitHub-hosted runners. Upstream's organization-specific
-# larger runners are not available in this distribution. Keep all existing checks.
+# Standard GitHub-hosted runners are available to the iPix fork.
 jobs:
   # What this push has to run (scripts/ci-changes.ts). On a pull request, a job whose inputs are
   # unchanged since a commit where it passed is skipped, and `verify` reads the skip as a pass: test
@@ -563,7 +572,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: ${{ fromJSON(inputs.cross_platform_startup == true && '["ubuntu-latest","macos-latest","windows-latest"]' || '["ubuntu-latest"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

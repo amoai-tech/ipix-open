@@ -1,19 +1,20 @@
 name: Desktop
 
-# The shell is the one thing here that cannot be proved by running it on Linux: it is a macOS app, a
-# Windows app and a Linux app built from one tree, and the ways they differ are exactly the ways
-# this fails. So it tests and builds on all three, on every change to it.
-# `shared/harnesses.json` and `shared/marks/**` are watched here even though they are not under
-# desktop/: the catalogue the setup window draws moved there so the web app could read one copy, and
-# these jobs are the only ones that prove it still deserializes into `Harness` — `catalogue()` parses
-# it at runtime with an `expect`, so a bad row panics the window rather than failing a type check.
+# Native regressions run when desktop inputs change, including the shared catalogue.
+# Full cross-platform packaging is explicit, or called by release workflows.
 on:
   pull_request:
-    paths: ["desktop/**", "shared/harnesses.json", "shared/marks/**", "shared/recorder-extension.json", "shared/fixtures/client-version/**", "package.json", ".github/workflows/desktop.yml", ".github/workflows/desktop-build.yml"]
+    paths: ["desktop/**", "shared/harnesses.json", "shared/marks/**", "shared/recorder-extension.json", "shared/fixtures/client-version/**", "package.json", ".github/workflows/desktop.yml", ".github/workflows/desktop-build.yml", "scripts/ci-changes.ts", "desktop/scripts/install-linux-build-deps.sh"]
   push:
     branches: [main]
-    paths: ["desktop/**", "shared/harnesses.json", "shared/marks/**", "shared/recorder-extension.json", "shared/fixtures/client-version/**", "package.json", ".github/workflows/desktop.yml", ".github/workflows/desktop-build.yml"]
+    paths: ["desktop/**", "shared/harnesses.json", "shared/marks/**", "shared/recorder-extension.json", "shared/fixtures/client-version/**", "package.json", ".github/workflows/desktop.yml", ".github/workflows/desktop-build.yml", "scripts/ci-changes.ts", "desktop/scripts/install-linux-build-deps.sh"]
+  workflow_dispatch:
   workflow_call:
+    inputs:
+      package_installers:
+        description: Build complete installers for each desktop platform
+        type: boolean
+        default: true
     secrets:
       OPENBOT_GOOGLE_MODEL_OAUTH_CLIENT_SECRET:
         required: false
@@ -21,10 +22,10 @@ on:
 permissions:
   contents: read
 
-# Pull requests from forks share one group, one run at a time, as in CI.
+# Independent PRs cannot replace one another's pending run.
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository && 'desktop-forks' || format('desktop-{0}', github.ref) }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !(github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  group: ${{ format('desktop-{0}-{1}', github.workflow, github.ref == 'refs/heads/main' && github.sha || github.ref) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Match the source publisher's exact repository/distribution identity in official and fork builds.
 env:
@@ -36,7 +37,7 @@ jobs:
   # What this push has to run (scripts/ci-changes.ts), as in CI: on a pull request, a job whose
   # inputs are unchanged since a commit where it passed is skipped. The setup window's own tests run
   # in CI's suite, so a change to them alone builds no app here, and neither does a release PR that
-  # moves only the versions. Any other event builds everything.
+  # moves only the versions. Non-PR events select all native tests; packaging remains opt-in.
   changes:
     name: changes
     runs-on: ubuntu-latest
@@ -62,12 +63,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bun scripts/ci-changes.ts desktop
 
-  # Fast formatting and lint checks. Rust regression tests run once per platform below.
+  # Native Linux checks, including regression tests without installer packaging.
   core:
     name: core
     needs: changes
     if: needs.changes.outputs.core == 'true'
-    # Clippy over the whole crate is CPU-bound: the 16-core larger runner, except for forks.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -94,9 +94,19 @@ jobs:
           key: desktop-apt-${{ runner.arch }}-${{ steps.image.outputs.image }}-${{ hashFiles('desktop/scripts/install-linux-build-deps.sh') }}
       - name: Install the Linux system libraries
         run: bash desktop/scripts/install-linux-build-deps.sh "$RUNNER_TEMP/apt-archives"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+        working-directory: desktop
+      - run: bun run build
+        working-directory: desktop
       - run: cargo fmt --check
         working-directory: desktop/src-tauri
       - run: cargo clippy --all-targets -- -D warnings
+        working-directory: desktop/src-tauri
+      - name: Native regression tests (no installer packaging)
+        run: cargo test --locked --lib --bins
         working-directory: desktop/src-tauri
 
   # The Rust regression tests that need a real container engine, on the Linux runner's Docker (the
@@ -172,11 +182,11 @@ jobs:
         run: cargo test --locked --lib host_access::live -- --ignored --test-threads=1
         working-directory: desktop/src-tauri
 
-  # The three artifacts, built by the shared workflow. A pull request build is unchanged: unpinned, no CLI, kept 7 days.
+  # Full installers are opt-in; release workflows also call the shared builder.
   app:
     name: app
     needs: changes
-    if: needs.changes.outputs.app == 'true'
+    if: needs.changes.outputs.app == 'true' && (github.event_name == 'workflow_dispatch' || inputs.package_installers == true)
     uses: $/.github/workflows/desktop-build.yml
     with:
       ref: ${{ github.event.pull_request.head.sha || github.sha }}
