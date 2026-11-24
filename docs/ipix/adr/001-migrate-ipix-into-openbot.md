@@ -11,7 +11,7 @@
 
 Build the new iPix application entirely in ipix-open. Copy and adapt proven iPix Mastra agents, tools, workflows, business logic, authorization, approval/save contracts and tests. **The legacy repository is source material, not a backend or runtime dependency.** No calls to the old Next.js application or its deployed APIs in the final architecture. Do not move the old UI wholesale or rebuild the packaged OpenBot server.
 
-**Faster/better approach:** migrate one vertical slice first: a synthetic fashion producer requests a six-outfit shoot, sees a structured shot list and budget, then reviews and saves exactly one approved plan in nonproduction. Before any Planner invocation, require a separate nonproduction Planner and isolated Mastra memory storage, or a verified control that prevents all Planner memory writes to production. Synthetic input alone is not a write barrier. Preserve existing Supabase identity and business data, Cloudinary media, Mastra contracts and tenancy. Keep OpenBot's own database/Intelligence separate. The new app and its Mastra service may be separate containers but are owned by the same repository.
+**Faster/better approach:** migrate one vertical slice first: a synthetic fashion producer requests a six-outfit shoot, sees a structured shot list and budget, then reviews and saves exactly one approved plan in nonproduction. Before any Planner invocation, require a separate nonproduction Planner and isolated Mastra memory storage, or a verified control that prevents all Planner memory writes to production. Synthetic input alone is not a write barrier. Preserve the existing production Supabase identity and business data, Cloudinary media, Mastra contracts and tenancy for the separately approved cutover. From Step 2 onward, use one dedicated nonproduction Supabase project for both Auth and business data; do not mix project issuers, keys or databases. Keep OpenBot's own database/Intelligence separate. The new app and its Mastra service may be separate containers but are owned by the same repository.
 
 ```mermaid
 flowchart TD
@@ -23,7 +23,7 @@ flowchart TD
         M --> T["Migrated domain logic and auth"]
         O --> W[("Separate OpenBot Postgres and Intelligence")]
     end
-    T --> D[("Existing Supabase Auth and business data")]
+    T --> D[("Environment-matched Supabase Auth and business data")]
     T --> C["Cloudinary media"]
 ```
 
@@ -41,16 +41,19 @@ The candidate destination is agent-mastra/src/mastra/ with migrated supporting d
 - **Checkpoint:** stop if the package cannot be loaded by the actual licensed server; file creation or Compose rendering alone is insufficient.
 
 ### Step 2 — Migrate identity and one authorized read (IPI-1492)
+**QA hard stop:** Before creating test users, memberships or brands, select an approved dedicated nonproduction Supabase project (or isolated local Supabase project for local tests). Auth, JWT issuer/audience, publishable key, RLS-protected database and storage must belong to that same environment. Use synthetic fixtures only, isolated OpenBot Postgres/Intelligence, Mastra storage and media credentials. At boot verify the allowlisted QA project and storage targets; reject production or mismatched configuration before any test call. No production service-role key or customer data in QA.
 **Destination:** iPix service within ipix-open; exact files after dependency inspection.
 **Reference — ADAPT:** https://github.com/amoai-tech/ipixai/blob/13bf2af385ebbe68a78c652daf5cffa3db95df24/src/mastra/server-auth.ts → resolveMastraIdentity(), plannerMastraAuth, route allowlist. Copy the necessary auth dependency closure, not Next.js cookie-only assumptions. Use verified Supabase user JWT and live membership; never browser orgId, email, user_metadata, model output, service_role or shared service token as actor.
 **Reference — ADAPT:** https://github.com/CopilotKit/OpenBot/blob/v1.1.2/docs/plugins/mcp-by-url.md and https://supabase.com/docs/guides/auth/oauth-server/mcp-authentication → per-user OAuth discovery, registration, PKCE and token security. Test compatibility and approved client/resource/audience first. Migrate a narrow list_my_brands operation using the existing domain reader; no broad management MCP in customer Bots. Check direct REST/RPC/storage bypass and revocation. OpenBot OAuth MCP and remote Mastra are distinct transports; identity forwarding must be separately proven.
-- Verify two synthetic users, allowed own-brand read, forbidden foreign brand/thread/asset, invalid token, revoked membership and zero unauthorized effects.
+- Authentication journey: sign in via the supported identity integration; OpenBot establishes its own verified workspace session; the supported transport obtains a per-user credential for the iPix service. Validate issuer, audience, signature, expiry and user identity server-side, resolve current membership and resource ownership, then use a user-scoped Supabase client with RLS. Keep credentials out of model inputs and logs. An OpenBot session or harness token alone is not authorization. Verify the mapping and token exchange/forwarding against the pinned runtime before selecting a transport.
+- Verify two synthetic users, allowed own-brand read, forbidden foreign brand/thread/asset, invalid/expired/wrong-project token, revoked membership and zero unauthorized effects; include direct API and storage bypass attempts.
 - Checkpoint: stop before real data if per-user authorization or OpenBot workspace isolation fails.
 
 ### Step 3 — Migrate the real Planner (IPI-1493)
 **Destination:** candidate agent-mastra/src/mastra/ and compatible domain modules/tests, all within ipix-open.
 **Reference — ADAPT:** https://github.com/CopilotKit/OpenBot/blob/v1.1.2/agent-mastra/src/mastra/index.ts → native Mastra HTTP server and @ag-ui/mastra. Use native adapter if verified user identity is supported; otherwise test a bounded authenticated MCP operation calling the migrated Planner. Do not copy demo managed token as user identity or old custom AG-UI/SSE example.
 **Reference — ADAPT:** https://github.com/amoai-tech/ipixai/tree/13bf2af385ebbe68a78c652daf5cffa3db95df24/src/mastra → agents/production-planner.ts, instructions, runtime.ts, planning/compose-shoot-plan/brand-intelligence tools, workflows, pg-store, thread-persistence, planner-tool-gate, run-control. Inspect dependency closure with Graphify and TypeScript. Copy pure logic; adapt runtime-specific auth and aliases; pin compatible packages and migrate corresponding tests. Legacy registry key default differs from agent ID production-planner; test discovery.
+- Dependency inventory (minimum, not a complete transitive closure): `agents/production-planner.ts`, `agents/production-planner-instructions.ts`, agent registry, `runtime.ts`, planning tools, `tools/compose-shoot-plan.ts`, `tools/brand-intelligence.ts`, `workflows/brand-intelligence.ts`, `workflows/shoot-plan-review.ts`, `pg-store.ts`, `thread-persistence.ts`, `server-auth.ts`, `planner-tool-gate.ts`, `run-control.ts`, `run-control-routes.ts`, domain services/types/schemas, approval contracts and corresponding tests. Record actual imports, package versions, required environment variable names and platform assumptions; classify each COPY+CLEAN / ADAPT / DROP and verify clean locked install. Do not assume this list is sufficient until the dependency closure builds.
 - Do not copy just src/mastra without its @/lib dependencies, whole legacy UI, node_modules, secrets or obsolete adapters. Do not assume old SDK versions compatible with Bun.
 - Before any Planner discovery/stream or pilot invocation, use a nonproduction Planner with separate Mastra memory storage (preferred), or prove a control that blocks all production memory writes, including messages, working memory, thread creation and title generation. The pinned legacy `production-planner.ts` enables resource-scoped working memory and title generation. Verify the effective storage target and negative write test before enabling the agent; stop if isolation cannot be proven.
 - Verify targeted tests, typecheck/build, authenticated discovery/stream, correct CopilotKit render, scoped memory, Stop/resume and synthetic user journey.
@@ -67,6 +70,45 @@ The candidate destination is agent-mastra/src/mastra/ with migrated supporting d
 **Reference — REFERENCE ONLY:** https://github.com/CopilotKit/OpenBot/blob/v1.1.2/docs/configuration.md → private endpoint policy, tenant loader and multi-organization warning. Preserve isolated workspace DB/Intelligence, verify conversation/skills/files/computer/Vault/memory access. Do not enable multi-org as substitute for isolation or repoint OpenBot DATABASE_URL at Supabase.
 - Verify clean ipix-open checkout, locked dependencies, independent image build, no legacy network/filesystem dependency, actual synthetic user journey, recovery and rollback.
 - Checkpoint: no commercial cutover until security, runtime and license gates pass.
+
+## Data and memory ownership
+
+| Data | Authoritative owner | Boundary |
+| --- | --- | --- |
+| User identity and organization membership | Supabase Auth and iPix membership tables | Server validates membership; OpenBot workspace mapping must be proven |
+| Brands, campaigns, shoots, approval revisions and saved results | Supabase Postgres | RLS and domain authorization; one canonical write path |
+| Native chat transcript, workspace, Bot configuration and native memory | OpenBot Postgres / Intelligence according to native contracts | Keep native storage separate; verify replay and retention |
+| Planner working memory and workflow execution state | Mastra with isolated storage | Scope by verified organization/user/thread; no competing authoritative UI transcript |
+| Images and media | Cloudinary; Supabase owns business metadata and access relationships | Authorized asset access; isolated QA media |
+| Versioned application package and schema changes | GitHub / approved migration process | No second production migration executor |
+
+Do not mirror every message into a second independent transcript. If the native adapter requires Mastra thread/message persistence, define a server-owned mapping and replay source, deduplication, retention and deletion responsibilities; prove refresh/restart before enabling customer access. Never use a model-supplied thread ID as ownership proof.
+
+### Target identity and approval journey
+
+```mermaid
+flowchart TD
+    U["Signed-in fashion producer"] --> O["OpenBot workspace session"]
+    O --> V["Verified per-user credential and membership"]
+    V --> A{"Authorized brand and thread?"}
+    A -- No --> X["Deny and audit"]
+    A -- Yes --> M["Mastra drafts plan"]
+    M --> R["CopilotKit review"]
+    R --> H{"Human approves exact revision?"}
+    H -- No --> M
+    H -- Yes --> S["Server revalidates and saves once"]
+    S --> D["Supabase durable readback"]
+```
+
+### CopilotKit component reuse (IPI-1493 / IPI-1495)
+
+**Destination:** `app/src/lib/copilot/a2ui.ts` and existing OpenBot UI, only if an actual gap is proven.
+**Reference — ADAPT:** https://github.com/amoai-tech/ipix-open/blob/8826a0fe3827b80c519b6b8a274e74efbaef7868/app/src/lib/copilot/a2ui.ts → `OPENBOT_UI`, `standardUI.omit`, overrides and Breakdown. Reuse native cards, tables, forms and budget breakdowns where supported by the installed catalog; preserve intentional omissions. Do not create a second provider/catalog or treat an editable field as approval. Verify installed component contracts and existing A2UI tests, then browser-test the exact approved artifact and durable readback.
+
+### Application update ownership (IPI-1491 / IPI-1496)
+
+**Destination:** `docker-compose.yml`, `config/ipix/`, `scripts/update-local.ts` and existing update tests.
+**Reference — ADAPT:** https://github.com/amoai-tech/ipix-open/blob/8826a0fe3827b80c519b6b8a274e74efbaef7868/scripts/update-local.ts → `protectedPaths` and candidate collision check. Git owns shipped package/default Compose; operators own local overrides, credentials, volumes and customized tenant packages. Do not disable customer-path protection or ship customer-owned override files. Define a verified upgrade path for clean repository-managed iPix config while refusing or explicitly integrating local customizations. Verify candidate update, preserved customer override and volume identity, rollback and restart. Keep implementation in downstream PRs; this ADR does not certify the updater.
 
 ## Dependencies
 
@@ -95,6 +137,7 @@ flowchart TD
 | Code/dependency migration and independent build | Pending |
 | Per-user OAuth/remote Mastra identity and tenant isolation | Pending; hard stop |
 | OpenBot workspace isolation | Pending; hard stop |
+| Dedicated nonproduction Supabase Auth and data, matching issuer/project and isolated credentials | Pending; hard stop before Step 2 |
 | Planner memory isolation or verified production write prevention | Pending; hard stop before invocation |
 | Human approval and idempotent save | Pending |
 | Commercial entitlement and production cutover | Not approved |
@@ -102,6 +145,20 @@ flowchart TD
 **Commercial gate:** https://github.com/CopilotKit/OpenBot/blob/v1.1.2/README.md and https://open.bot/pricing — confirm SaaS/embedding rights and separate Intelligence entitlement in writing; MIT source alone does not prove entitlement. Evaluate newer versions only with staging and rollback.
 
 **Database gate:** preserve existing Supabase data and RLS. Coordinate IPI-1171 / IPI-1441 migration governance; no duplicate schema migration, parallel production writers or unauthorized data changes. Existing deployments remain untouched until a separately approved handover.
+
+### Measurable acceptance criteria (downstream, all pending)
+
+| Gate | Required evidence |
+| --- | --- |
+| IPI-1490 / 1491 | Licensed pinned server loads five required YAML files and both fashion coworkers; chat, refresh and restart pass |
+| IPI-1492 | Two QA organizations; own-brand access succeeds, all foreign/revoked/invalid credential cases deny and audit; zero production writes |
+| IPI-1493 | Clean locked build from ipix-open alone; native adapter or bounded authenticated fallback proven; Planner discovery, stream, stop/resume and isolated memory pass |
+| IPI-1494 / 1495 | Six-outfit synthetic plan renders; exact human-approved revision saves once under retry; forged/stale/cross-tenant approvals denied; durable readback |
+| IPI-1496 / 1497 | Restart and second-replica proof, update/rollback rehearsal, verified backup and restore in QA, no legacy runtime dependency, exact-head CI and approved commercial entitlement |
+
+Record tested SHA, environment, commands, expected/actual outcomes and evidence links in each issue. No production cutover until all relevant gates pass and the owner explicitly approves.
+
+**Migration and cutover:** Inventory existing schema, credentials and integrations; migrate only audited code into the new repo, seed QA using approved migrations and synthetic records, run the vertical slice and recovery rehearsal, then obtain separate human cutover approval. Before production handover verify backup/restore, compatible schema, writer ownership and routing; switch one authorized writer at a time. On failure stop new writes, restore routing to the verified legacy deployment where compatible, reconcile any already committed changes through an approved recovery procedure, and never automatically overwrite or delete production records.
 
 **Rollback:** retain legacy source and any existing deployment as a temporary rollback safeguard, not a required backend. Stop isolated new services and revoke staged grants on failed gates. Stopping OpenBot does not remove persisted Planner memory or restore production records already written. Prevent production writes before the pilot starts; never rely on deleting production records afterward. Retain isolated pilot state under its approved retention policy.
 
