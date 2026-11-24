@@ -14,7 +14,7 @@
       "skill": "production-observability",
       "shouldTrigger": false,
       "prompt": "A specific Bun test is now failing with a reproducible TypeError. Diagnose and fix this active regression, not design logging or an alerting platform.",
-      "expected": "Uses an existing focused failing Bun test and avoids invoking production-observability for a one-off active bug."
+      "expected": "Uses an existing focused failing Bun test and avoids invoking `production-observability` for a one-off active bug."
     },
     {
       "id": "blast-radius-shared-auth",

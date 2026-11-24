@@ -58,6 +58,13 @@ test("guidance forbids raw secrets and requires observable runtime evidence", ()
     read(".claude/skills/evals/observability-blast-routing.json"),
   ) as { cases: { expected: string }[] };
   const sources = [obs, blast, ...fixture.cases.map((x) => x.expected)];
+  for (const expected of fixture.cases.map((entry) => entry.expected)) {
+    // A named fallback such as "Prefers root-cause-debugging" must be quoted
+    // so the skill-existence check below cannot silently skip it.
+    expect(expected).not.toMatch(
+      /\b(?:Prefers|Routes to)\s+[a-z][a-z0-9]*-[a-z0-9-]+/i,
+    );
+  }
   for (const source of sources) {
     const siblingNames = [
       ...source.matchAll(/`([a-z][a-z0-9]*(?:-[a-z0-9]+)+)`/g),
