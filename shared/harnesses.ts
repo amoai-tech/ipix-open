@@ -66,20 +66,8 @@ export type Harness = {
 export const HARNESSES: readonly Harness[] =
   catalogue.harnesses as readonly Harness[];
 
-/**
- * The partners a person adding a Bot looks for first, in the order the web lists them.
- *
- * The catalogue is ranked stars-first, which suits the desktop installer choosing an image to run
- * but not somebody scanning for their own framework: Atai, October 19, read CrewAI, LlamaIndex and
- * Agno at the top as "the ones on top don't make sense", and reported LangChain and ADK missing when
- * they were fourth and fifth. These lead; everything else follows in the catalogue's own order.
- */
-const WEB_LEAD: readonly string[] = [
-  "claude-agent-sdk",
-  "google-adk",
-  "antigravity",
-  "langgraph",
-];
+/** Retained iPix frameworks: lead with LangGraph, then preserve catalogue order. */
+const WEB_LEAD: readonly string[] = ["langgraph"];
 
 /** Where a harness sits in the web list: its lead position, or after every lead. */
 function webRank(harness: Harness): number {

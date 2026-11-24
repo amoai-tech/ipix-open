@@ -66,23 +66,23 @@ test("every exact pin in a harness's requirements is a client the check records"
 });
 
 test("a pin that moved past the lock is caught", () => {
-  const claude = pinnedClients(ROOT, "agent-claude-sdk");
-  expect(Object.keys(claude)).toContain("claude-agent-sdk");
+  const current = pinnedClients(ROOT, "agent-langgraph-agui");
+  expect(Object.keys(current)).toContain("codex-client");
   const old: ModelLock = {
     checkedAt: "2026-11-17",
     engines: {
-      "agent-claude-sdk": {
-        clients: { ...claude, "claude-agent-sdk": "0.2.152" },
+      "agent-langgraph-agui": {
+        clients: { ...current, "codex-client": "0.0.0" },
         providers: {},
       },
     },
   };
   expect(staleClients(old, ROOT)).toEqual([
     {
-      harness: "agent-claude-sdk",
-      client: "claude-agent-sdk",
-      pinned: claude["claude-agent-sdk"] ?? "",
-      locked: "0.2.152",
+      harness: "agent-langgraph-agui",
+      client: "codex-client",
+      pinned: current["codex-client"] ?? "",
+      locked: "0.0.0",
     },
   ]);
   // The Codex version the LangGraph harness sends a ChatGPT plan, and Mastra's resolved clients.

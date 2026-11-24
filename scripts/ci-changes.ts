@@ -119,20 +119,7 @@ const pythonHarness = matcher(
 );
 
 /** The harnesses ci.yml's `python-harness` matrix tests, one job each. */
-export const PYTHON_HARNESSES = [
-  "agent-crewai",
-  "agent-claude-sdk",
-  "agent-langgraph-agui",
-  "agent-llamaindex",
-  "agent-agno",
-  "agent-strands",
-  "agent-pydantic-ai",
-  "agent-adk",
-  "agent-antigravity",
-  "agent-langroid",
-  "agent-ag2",
-  "agent-microsoft",
-];
+export const PYTHON_HARNESSES = ["agent-langgraph-agui"];
 
 export const CI_RULES: Rule[] = [
   {
