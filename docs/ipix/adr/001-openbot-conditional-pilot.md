@@ -32,7 +32,7 @@ The candidate destination is agent-mastra/src/mastra/ with migrated supporting d
 ## Migration sequence and implementation references
 
 ### Step 1 — Fashion configuration (IPI-1490 / IPI-1491)
-**Destination:** examples/ipix/ and existing Compose configuration.
+**Destination:** **config/ipix/** as the canonical iPix application package, plus existing Compose configuration; preserve upstream examples unchanged.
 **Reference — ADAPT:** https://github.com/CopilotKit/OpenBot/tree/v1.1.2/examples/fintech → agents.yaml, skills.yaml, brand.yaml, channels.yaml, knowledge.yaml, model.yaml and catalog/.
 - Use the tenant-package pattern; adapt for fashion and mount into the running backend.
 - Do not copy demo identities, credentials, broad grants or irrelevant coworkers.
@@ -101,4 +101,6 @@ flowchart TD
 
 **Rollback:** retain legacy source and any existing deployment as a temporary rollback safeguard, not a required backend. Stop isolated new services and revoke staged grants on failed gates.
 
-**Next:** IPI-1490/1491 and synthetic IPI-1492, then port the Planner under IPI-1493. Update IPI-1390 and downstream task references to the migration direction, without claiming implementation is complete.
+**Worktree policy:** Every iPix Open development worktree belongs under `/home/sk/ipix-open-wt/`, not `/tmp/`, `~/.worktrees/` or the old iPix repository. Main repository remains `/home/sk/ipix-open/`; backups belong under `/home/sk/openbot-backups/`. The canonical `AGENTS.md` rule is introduced with the iPix default-app implementation task.
+
+**Next:** Complete IPI-1491 from `/home/sk/ipix-open-wt/ipi-1491-default-app/`; then synthetic IPI-1492 before porting the Planner under IPI-1493. Update IPI-1390 and downstream references without claiming implementation is complete.
