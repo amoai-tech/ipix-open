@@ -60,3 +60,8 @@ extension/**/*.pem
 
 # The folder scripts/start.sh mounts into the server's container for a model sign-in file.
 .openbot/
+
+# IPI-1505: local-only migration snapshot pending canonical IPI-1506 handoff.
+/supabase/migrations/
+/supabase/.temp/
+/supabase/.branches/
