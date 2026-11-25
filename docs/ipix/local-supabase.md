@@ -20,10 +20,10 @@ API: http://127.0.0.1:56221; PostgreSQL: 127.0.0.1:56222. The dedicated Docker n
 - All 350 versions applied to the local database; 85/85 public regular tables have RLS enabled.
 - Database and Auth containers healthy; Auth health endpoint HTTP 200.
 - Both published ports bound to 127.0.0.1; existing stacks left untouched.
-- Real synthetic customer sign-in and own/foreign data access are not yet verified. Do not interpret an RLS-enabled flag as proof of correct tenant policies.
+- Two synthetic customers signed up via ordinary local Auth and signed in with passwords. Both verified their profile, one distinct owner membership and own brand; cross-tenant brand and anonymous reads were denied. The proof passed twice. OpenBot identity forwarding remains a separate IPI-1504/1492 gate.
 
 ## Next
 
-Reuse the two existing synthetic owner identities and fixture logic in legacy scripts/run-approval-001-e2e.mjs and e2e/support/approval-001-fixtures.ts; scope fixture creation strictly to this stack. Prove real Auth sessions, own-brand read, foreign-brand denial, and idempotent repeat. Keep comprehensive QA and actual OpenBot integration in their assigned tasks. No customer data until IPI-1504/1492 pass.
+Run `node scripts/ipix-local-auth-proof.mjs` after startup. It adapts the legacy synthetic owner emails and organization/brand fixtures, uses the standard local signup/sign-in API (generated user UUIDs, not manually inserted Auth rows), and provisions only those synthetic business rows. It refuses other worktrees, linked projects and non-loopback Docker bindings. Re-running is safe for these fixtures. No admin API credential is used. Keep the fixture records in this dedicated local development database. Keep comprehensive QA and actual OpenBot integration in their assigned tasks. No customer data until IPI-1504/1492 pass.
 
 Reference — ADAPT: https://supabase.com/docs/guides/local-development and https://supabase.com/docs/guides/local-development/cli-workflows — local CLI, separate project and loopback binding; no hosted branch or schema pull. Legacy snapshot: https://github.com/amoai-tech/ipixai/tree/13bf2af385ebbe68a78c652daf5cffa3db95df24/supabase/migrations — exact migrations for local development only.
