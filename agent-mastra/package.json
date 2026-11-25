@@ -6,6 +6,7 @@
     "@ai-sdk/anthropic": "*",
     "@ai-sdk/openai": "*",
     "@mastra/core": "*",
-    "mastra": "*"
+    "mastra": "*",
+    "zod": "4.6.7"
   }
 }

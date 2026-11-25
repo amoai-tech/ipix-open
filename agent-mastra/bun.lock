@@ -9,6 +9,7 @@
         "@ai-sdk/openai": "*",
         "@mastra/core": "*",
         "mastra": "*",
+        "zod": "4.6.7",
       },
     },
   },
