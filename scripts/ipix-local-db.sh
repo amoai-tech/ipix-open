@@ -7,7 +7,11 @@ source_sha=13bf2af385ebbe68a78c652daf5cffa3db95df24
 legacy="${IPIX_LEGACY_SOURCE:-/home/sk/ipixai}"
 network=ipixopen1505-loopback
 [[ "$(supabase --version 2>/dev/null)" == 3.2.0 ]] || { echo "Use Supabase CLI 3.2.0"; exit 1; }
-[[ ! -e supabase/.temp/project-ref && ! -e supabase/.branches/_current_branch ]] || { echo "Refusing linked or ambiguous project"; exit 1; }
+[[ ! -e supabase/.temp/project-ref ]] || { echo "Refusing linked project"; exit 1; }
+# Supabase CLI writes a local "main" marker even for an unlinked project.
+if [[ -e supabase/.branches/_current_branch ]]; then
+  [[ "$(cat supabase/.branches/_current_branch)" == main ]] || { echo "Refusing ambiguous local branch"; exit 1; }
+fi
 grep -qx 'project_id = "ipixopen1505"' supabase/config.toml || exit 1
 if [[ -d supabase/migrations ]]; then
   # Never replace an existing snapshot silently.
