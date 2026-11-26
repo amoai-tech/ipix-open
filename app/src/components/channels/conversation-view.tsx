@@ -31,6 +31,7 @@ import { StarPrompt } from "@/components/star-prompt/star-prompt";
 import { deleteAttachment } from "@/lib/api/generated/conversations/conversations";
 import { idempotencyKey, organizationId } from "@/lib/api/request";
 import type { ComposerAttachmentLimits } from "@/lib/deployment/queries";
+import type { Failure } from "@/lib/load-failure";
 import { useNotificationPermission } from "@/lib/notifications/permission";
 import { newId } from "../../lib/new-id";
 
@@ -53,6 +54,9 @@ export function ConversationView({
   pending = false,
   autoFocus = false,
   stopped,
+  refusals,
+  stoppedNotice,
+  onCarryOn,
   working,
   stoppable,
   queueWhileBusy = false,
@@ -64,6 +68,7 @@ export function ConversationView({
   voiceCall,
   modelPicker,
   routine,
+  draftKey,
 }: {
   messages: readonly Message[];
   threadId?: string;
@@ -109,7 +114,13 @@ export function ConversationView({
   /** Focus the composer the moment it can take a caret; forwarded to the composer. */
   autoFocus?: boolean;
   /** Why the last turn ended without an answer. Drawn at the end of the transcript, not here. */
-  stopped?: string;
+  stopped?: Failure;
+  /** Turns the server refused, each under its own message; see the transcript's `refusals`. */
+  refusals?: ReadonlyMap<string, string>;
+  /** Drawn under `stopped`, or else the latest refusal (the transcript's `stoppedNotice`). */
+  stoppedNotice?: ReactNode;
+  /** Carry on with a turn that was cut off part way; a button beside `stopped`. */
+  onCarryOn?: () => void;
   /** Work the conversation waits on that is not this tab's run. Drawn at the end of the transcript. */
   working?: ReactNode;
   /**
@@ -151,6 +162,8 @@ export function ConversationView({
   modelPicker?: ReactNode;
   /** The Bot and conversation for the composer's routine clock. See `Composer`. */
   routine?: { agentId: string; channelId: string };
+  /** Which conversation's unsent message the composer keeps. See `Composer`. */
+  draftKey?: string;
 }) {
   /*
    * THE QUEUE LIVES HERE BECAUSE BOTH HALVES OF IT DO.
@@ -402,6 +415,46 @@ export function ConversationView({
   );
 
   /**
+   * SEND NOW ON A QUEUED MESSAGE: stop the turn, keep what it did, and send this one next.
+   *
+   * Idle, the message simply goes. Busy, `reduceQueue` marks it to run alone when the turn ends,
+   * and Stop ends it: the same Stop as the button, so the work the turn has done so far (its
+   * finished steps, their results, the reply up to that point) stays in the conversation and the
+   * Bot reads all of it with this message. The drain below does the sending, on the turn ending,
+   * as it does for everything else that is parked.
+   *
+   * A turn Stop cannot reach yet (its run has not started) is stopped once it can be. One it cannot
+   * reach at all (the server carrying on after an approval) is not stopped from here, and the
+   * message goes as soon as it ends, ahead of the rest.
+   */
+  const stopWhenStoppable = useRef(false);
+  const canStop = Boolean(onStop) && (stoppable ?? pending);
+  const sendQueuedNow = (id: string) => {
+    const next = apply({ busy: inFlight, id, type: "sendNow" });
+    if (next.run) {
+      const carried = next.restoreIfRunFails;
+      void startRef.current(next.run).catch((error: unknown) => {
+        // As a drain's failure is answered: back in the queue, nothing lost. See the drain below.
+        restoreFailedRun(carried, error);
+      });
+      return;
+    }
+    if (!next.queue.some((message) => message.next)) return;
+    if (canStop) onStop?.();
+    else stopWhenStoppable.current = true;
+  };
+  useEffect(() => {
+    if (!inFlight) {
+      stopWhenStoppable.current = false;
+      return;
+    }
+    if (canStop && stopWhenStoppable.current) {
+      stopWhenStoppable.current = false;
+      onStop?.();
+    }
+  }, [canStop, inFlight, onStop]);
+
+  /**
    * The turn ended. Whatever was waiting for it goes now, as one message.
    *
    * KEYED ON THE TURN BEING OVER AND NOT ON HOW IT ENDED, which is what makes Stop useful rather
@@ -501,9 +554,13 @@ export function ConversationView({
           onRemoveQueued={(id) => {
             apply({ id, type: "remove" });
           }}
+          onSendQueuedNow={disabled ? undefined : sendQueuedNow}
           queued={queued}
           restoring={restoring}
           {...(stopped ? { stopped } : {})}
+          {...(refusals ? { refusals } : {})}
+          {...((stopped || refusals) && stoppedNotice ? { stoppedNotice } : {})}
+          {...(stopped && onCarryOn && !disabled ? { onCarryOn } : {})}
           working={working}
         />
       </div>
@@ -548,6 +605,8 @@ export function ConversationView({
          */}
         {disabled ||
         stopped ||
+        // A turn refused here is said under its message, and counts as an error the same way.
+        (refusals?.size ?? 0) > 0 ||
         notificationPermission === "checking" ||
         (notificationPermission === "default" &&
           !notifyPromptAnswered()) ? null : (
@@ -567,7 +626,7 @@ export function ConversationView({
          */}
         {attached ? (
           <div
-            className="mx-5 -mb-4 rounded-t-2xl border border-border border-b-0 bg-muted pb-4"
+            className="mx-5 -mb-4 rounded-t-xl border border-border border-b-0 bg-muted pb-4"
             data-slot="composer-drawer"
           >
             {attached}
@@ -578,6 +637,7 @@ export function ConversationView({
         <Composer
           modelPicker={modelPicker}
           {...(routine ? { routine } : {})}
+          {...(draftKey ? { draftKey } : {})}
           agents={agents}
           autoFocus={autoFocus}
           {...(channelId ? { channelId } : {})}

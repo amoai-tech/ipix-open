@@ -3,15 +3,21 @@ import { approvalPhrase } from "@openbot/shared/tool-name";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { type ReactNode, useState } from "react";
-import { shareOf, ShareText } from "@/components/approvals/share-details";
+import { ShareText, shareOf } from "@/components/approvals/share-details";
 import { DecisionCard } from "@/components/decisions/decision-card";
 import type { Tone } from "@/components/gallery/frame";
+import {
+  SettingsChangeRows,
+  settingsChangeOf,
+} from "@/components/settings-tools/settings-change-card";
+import { settingsApprovalBodyFor } from "@/components/settings-tools/settings-tool-card";
 import {
   type ApprovalDecision,
   approvalInboxOptions,
   decideApproval,
 } from "@/lib/approvals";
 import { noteAnswered } from "@/lib/computers/activity";
+import { failureSaid } from "@/lib/load-failure";
 import { EASE_OUT } from "@/lib/motion";
 
 /**
@@ -107,6 +113,14 @@ export function InlineApproval({
   const title = request ? approvalPhrase(request.action) : "";
   // A share shows who reads it and what it would send, so the person sees what leaves the conversation.
   const share = request ? shareOf(request.action) : null;
+  // A change to OpenBot's settings shows its before, after and who it reaches while it waits.
+  const change = settingsChangeOf(
+    (request?.action.target as { change?: unknown } | undefined)?.change,
+  );
+  // A settings tool may draw its own body for the change; the shared rows otherwise.
+  const ownBody = request
+    ? settingsApprovalBodyFor(request.action.toolRef)
+    : null;
   return (
     <>
       {/* The card leaves by folding away; what is left behind is the tool's own line. */}
@@ -136,7 +150,7 @@ export function InlineApproval({
                 share?.caption ??
                 (handOff ? "This one is yours to do." : undefined)
               }
-              error={decision.error?.message ?? null}
+              error={decision.error}
               onSubmit={(value) => decision.mutate(value as ApprovalDecision)}
               options={choices.map((choice) => ({
                 value: choice,
@@ -149,7 +163,21 @@ export function InlineApproval({
               submitting={decision.isPending}
               title={title.charAt(0).toUpperCase() + title.slice(1)}
             >
-              {share?.text || share?.files.length ? (
+              {change && ownBody ? (
+                <ownBody.Body
+                  args={
+                    (request.action.args as Record<string, unknown> | null) ??
+                    {}
+                  }
+                  change={change}
+                  tool={ownBody.tool}
+                />
+              ) : change ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm">{change.summary}</p>
+                  <SettingsChangeRows change={change} state="waiting" />
+                </div>
+              ) : share?.text || share?.files.length ? (
                 <ShareText files={share.files} text={share.text} />
               ) : null}
             </DecisionCard>
@@ -172,7 +200,7 @@ export function InlineApproval({
           data-testid="approval-left"
           role={request.left.done ? "status" : "alert"}
         >
-          {request.left.message}
+          {failureSaid(request.left)}
         </p>
       ) : null}
     </>

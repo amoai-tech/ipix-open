@@ -279,12 +279,48 @@ at a container nobody started — which looks like a broken Bot rather than a ba
 */
 pub fn picked(
     choice: Option<&HarnessChoice>,
+    root: &std::path::Path,
+) -> Result<Option<crate::env::PickedHarness>, String> {
+    pick(choice, root).map_err(String::from)
+}
+
+/// Why [`pick`] refused: the pick itself, or an image list it could not read.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PickError {
+    /// The release's image list is missing or unreadable. Not about the pick: the installation is
+    /// damaged, and Install puts the list back (`deployment::ReferenceError::Unreadable`).
+    ImageList(String),
+    /// The pick itself: a Bot this build does not have, one this release does not publish, or an
+    /// address that is not one.
+    Refused(String),
+}
+
+impl From<PickError> for String {
+    fn from(error: PickError) -> Self {
+        match error {
+            PickError::ImageList(detail) | PickError::Refused(detail) => detail,
+        }
+    }
+}
+
+impl From<crate::deployment::ReferenceError> for PickError {
+    fn from(error: crate::deployment::ReferenceError) -> Self {
+        match error {
+            crate::deployment::ReferenceError::Unreadable(detail) => Self::ImageList(detail),
+            crate::deployment::ReferenceError::NotIncluded(detail) => Self::Refused(detail),
+        }
+    }
+}
+
+/// [`picked`], saying whether the refusal is about the pick or about an unreadable image list.
+pub fn pick(
+    choice: Option<&HarnessChoice>,
     // Where the deployment is, because the image reference is read from the manifest laid down
     // beside it. A name built from a version was what this took before, and an unqualified name
     // sends every engine to Docker Hub: the pull was refused there and the person was shown a
     // registry permissions error for a repository that had never been pushed.
     root: &std::path::Path,
-) -> Result<Option<crate::env::PickedHarness>, String> {
+) -> Result<Option<crate::env::PickedHarness>, PickError> {
     let Some(choice) = choice else {
         return Ok(None);
     };
@@ -296,11 +332,11 @@ pub fn picked(
         .into_iter()
         .find(|row| row.id == id)
         .ok_or_else(|| {
-            if catalogue_rows(true).iter().any(|row| row.id == id) {
+            PickError::Refused(if catalogue_rows(true).iter().any(|row| row.id == id) {
                 format!("The local Bot {id} was retired in iPix. Choose LangGraph, Mastra, or connect an existing AG-UI endpoint.")
             } else {
                 format!("There is no Bot called \"{id}\" to install.")
-            }
+            })
         })?;
     if row.id == "byo-url" {
         let url = choice
@@ -309,7 +345,8 @@ pub fn picked(
             .ok_or_else(|| {
                 "Enter a valid http:// or https:// address for the agent endpoint.".to_string()
             })
-            .and_then(byo_remote_ag_ui_url)?;
+            .and_then(byo_remote_ag_ui_url)
+            .map_err(PickError::Refused)?;
         return Ok(Some(crate::env::PickedHarness::RemoteAgUi {
             url,
             name: row.name,
@@ -317,11 +354,13 @@ pub fn picked(
         }));
     }
     let (Some(image), Some(port)) = (row.image, row.port) else {
-        return Err(format!("\"{id}\" is not a Bot this can install."));
+        return Err(PickError::Refused(format!(
+            "\"{id}\" is not a Bot this can install."
+        )));
     };
     let mastra = row.id == "mastra";
     Ok(Some(crate::env::PickedHarness::Installed {
-        image: crate::deployment::reference(root, &image)?,
+        image: crate::deployment::image_reference(root, &image)?,
         port,
         name: row.name,
         mastra,
@@ -334,6 +373,58 @@ pub fn picked(
             String::new()
         },
     }))
+}
+
+/**
+The Bot an install of `root` puts in: `asked`, when the release laid out in `root` includes it.
+
+A Mac on Docker Desktop, after Desktop was updated from 1.0.3 to 1.1.2: the folder was still laid out
+at 1.0.3, since Start moves it to the app's release, and the first screen's install asked for the
+new default Bot, which 1.0.3 does not have. Install failed with "OpenBot v1.0.3 does not include
+agent-langgraph-ts", and Retry the same way, every time. Install puts in what the folder's own
+release runs, so a release that lacks the Bot asked for keeps the one the folder already has
+(`kept`), and without one takes the first Bot the release does include, in the catalogue's order.
+The Bot asked for comes with the release that has it, when Start moves the folder to it. A Bot the
+person typed an address for, or any other refusal, is left to `picked` to say.
+*/
+pub fn the_release_includes(
+    asked: Option<HarnessChoice>,
+    kept: Option<HarnessChoice>,
+    root: &std::path::Path,
+) -> Option<HarnessChoice> {
+    let lacks = |choice: &HarnessChoice| {
+        catalogue()
+            .into_iter()
+            .find(|row| row.id == current_id(choice.id.trim()))
+            .and_then(|row| row.image)
+            .is_some_and(|image| crate::deployment::reference(root, &image).is_err())
+    };
+    let Some(choice) = asked.as_ref().filter(|choice| lacks(choice)) else {
+        return asked;
+    };
+    // The folder's own Bot is what its release was installed with, so it is never second-guessed
+    // here: its finished install is kept as it is (`preparation::require`).
+    let instead = kept.or_else(|| {
+        catalogue()
+            .into_iter()
+            .filter(|row| row.image.is_some())
+            .map(|row| HarnessChoice {
+                id: row.id,
+                agent_url: None,
+            })
+            .find(|row| picked(Some(row), root).is_ok())
+    });
+    match instead {
+        Some(instead) => {
+            log::warn!(
+                "[install] the release laid out here does not include {}; installing {} until Start moves it to the release that does",
+                choice.id,
+                instead.id
+            );
+            Some(instead)
+        }
+        None => asked,
+    }
 }
 
 #[derive(Debug)]
@@ -909,6 +1000,48 @@ mod tests {
             assert_eq!(picked_run_path, run_path);
         }
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// A Mac updated from 1.0.3 to 1.1.2, its folder still laid out at 1.0.3: the first screen's
+    /// install asked for the new default Bot, and failed every time with "OpenBot v1.0.3 does not
+    /// include agent-langgraph-ts". Install now keeps the Bot the folder has, and without one takes
+    /// one its release includes. A release that includes the Bot asked for installs it.
+    #[test]
+    fn install_never_asks_for_a_bot_the_folders_release_does_not_include() {
+        let root = scratch("old-release");
+        // 1.0.3 had no TypeScript LangGraph Bot; CrewAI stands in for what it did have.
+        write_crewai_manifest(&root);
+        let asked = Some(choice(DEFAULT_HARNESS));
+        assert!(picked(asked.as_ref(), &root)
+            .expect_err("1.0.3 has no such Bot")
+            .contains("does not include agent-langgraph-ts"));
+
+        // The folder's own Bot is kept: its finished install is what Start moves forward.
+        let kept = Some(choice("langgraph"));
+        assert_eq!(
+            the_release_includes(asked.clone(), kept.clone(), &root),
+            kept
+        );
+        // Without one, a Bot the release has, which installs.
+        let instead = the_release_includes(asked.clone(), None, &root);
+        assert_eq!(instead, Some(choice("crewai")));
+        assert!(picked(instead.as_ref(), &root).is_ok());
+
+        // Once the folder is on a release with it, the Bot asked for is what installs.
+        let current = deployment_naming_everything("new-release");
+        assert_eq!(
+            the_release_includes(asked.clone(), kept.clone(), &current),
+            asked
+        );
+        // An address the person typed, or no Bot at all, is never swapped.
+        let byo = Some(HarnessChoice {
+            id: "byo-url".into(),
+            agent_url: Some("https://agent.example".into()),
+        });
+        assert_eq!(the_release_includes(byo.clone(), None, &root), byo);
+        assert_eq!(the_release_includes(None, kept, &root), None);
+        let _ = std::fs::remove_dir_all(&root);
+        let _ = std::fs::remove_dir_all(&current);
     }
 
     /// An image this release does not publish is named as that, rather than left to the engine.

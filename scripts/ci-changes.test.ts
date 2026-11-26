@@ -497,9 +497,13 @@ function jobNames(workflow: string): string[] {
     // The startup matrix has an explicit opt-in branch and a default Linux branch.
     // Expand the default here, because the cache rules certify ordinary PRs.
     const defaultValues =
-      typeof values === "string"
-        ? JSON.parse(values.match(/\|\| '([^']+)'\) \}\}$/)?.[1] ?? "null")
-        : values;
+      values === expression("fromJSON(needs.component-list.outputs.components)")
+        ? JSON.parse(
+            readFileSync(join(ROOT, ".github/published-images.json"), "utf8"),
+          )
+        : typeof values === "string"
+          ? JSON.parse(values.match(/\|\| '([^']+)'\) \}\}$/)?.[1] ?? "null")
+          : values;
     expect(Array.isArray(defaultValues), name).toBe(true);
     for (const value of defaultValues as unknown[]) {
       names.push(
@@ -525,6 +529,26 @@ describe("the rules name the jobs the workflows run", () => {
     expect(
       names.filter((name) => name.startsWith("tests (shard")),
     ).toHaveLength(SHARDS);
+  });
+
+  test("ci.yml: component matrix covers exactly the published Dockerfiles", () => {
+    const published = JSON.parse(
+      readFileSync(join(ROOT, ".github/published-images.json"), "utf8"),
+    ) as string[];
+    const buildable = readdirSync(ROOT)
+      .filter(
+        (dir) =>
+          dir !== "management-agent" &&
+          dir !== "node_modules" &&
+          existsSync(join(ROOT, dir, "Dockerfile")),
+      )
+      .sort();
+    expect([...published].sort()).toEqual(buildable);
+    expect(
+      jobNames("ci.yml").filter((name) =>
+        name.startsWith("component dockerfile ("),
+      ),
+    ).toEqual(published.map((image) => `component dockerfile (${image})`));
   });
 
   test("ci.yml: the harness matrix is every harness with tests, and the rule waits on each", () => {
@@ -563,6 +587,35 @@ describe("the rules name the jobs the workflows run", () => {
           `^mcr\\.microsoft\\.com/playwright:v${version?.replaceAll(".", "\\.")}-noble@sha256:[0-9a-f]{64}$`,
         ),
       );
+    }
+  });
+
+  test("ci.yml: each real-browser job runs its files side by side, in one step", () => {
+    // The WebKit job began with one file and no --parallel. Files were added to its list, and as
+    // steps of their own, until it ran 30 files in two engines one after another: 35 minutes, the
+    // whole length of a run. A run narrowed to some of a file's tests (-t) is the one exception.
+    const parsed = Bun.YAML.parse(
+      readFileSync(join(ROOT, ".github/workflows/ci.yml"), "utf8"),
+    ) as { jobs: Record<string, { steps?: { run?: string }[] }> };
+    for (const job of [
+      "app-browser",
+      "app-browser-webkit",
+      "app-browser-desktop",
+    ]) {
+      const lists = (parsed.jobs[job]?.steps ?? [])
+        .map((step) => step.run ?? "")
+        .filter((run) => /\bbun test\b/.test(run) && !/\s-t\s/.test(run));
+      expect({ job, steps: lists.length }).toEqual({ job, steps: 1 });
+      const files = lists[0]?.match(/\S+\.test\.tsx?\b/g) ?? [];
+      if (files.length > 1) {
+        expect({
+          job,
+          parallel: /\bbun test --parallel\b/.test(lists[0] ?? ""),
+        }).toEqual({
+          job,
+          parallel: true,
+        });
+      }
     }
   });
 
@@ -614,6 +667,7 @@ describe("the rules name the jobs the workflows run", () => {
     ).toEqual([
       "ai_connection::tests::real_engine",
       "host_access::live",
+      "local_eval::stack_lost_live::engine",
       "local_images::live",
       "netavark_rules::live",
       "update_ready::live",

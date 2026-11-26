@@ -343,6 +343,209 @@ export const WakeComputerResponse = zod.object({
 });
 
 /**
+ * Return the saved copies of the computer this Bot runs on for the caller, newest first, and the latest restore of it. OpenBot saves each computer's files and browser sign-ins once a day and keeps the last 7, and saves it again just before every restore. computer names another person's computer the Bot runs on (person:<id> or bot:<id>), which only an administrator of the organization may read. available is false where this OpenBot keeps no copies. canRestore says whether the caller may restore it: an administrator of the organization, or the person whose computer it is when they own the Bot (an isolated Bot's computer is its owner's). Reading it never starts the computer.
+ * @summary Read a computer's saved copies
+ */
+
+export const getWorkspaceSnapshotsPathBotIdRegExp = new RegExp("\\S");
+
+export const GetWorkspaceSnapshotsParams = zod.object({
+  organizationId: zod
+    .string()
+    .min(1)
+    .describe(
+      "The organization, by its id or its slug. One the caller is not a member of answers as one that does not exist, `default` included.",
+    ),
+  botId: zod
+    .string()
+    .min(1)
+    .regex(getWorkspaceSnapshotsPathBotIdRegExp)
+    .describe("The Bot's id."),
+});
+
+export const getWorkspaceSnapshotsQueryComputerMax = 300;
+
+export const getWorkspaceSnapshotsQueryComputerRegExp = new RegExp(
+  "^(person|bot):\\S+$",
+);
+
+export const GetWorkspaceSnapshotsQueryParams = zod.object({
+  computer: zod
+    .string()
+    .min(1)
+    .max(getWorkspaceSnapshotsQueryComputerMax)
+    .regex(getWorkspaceSnapshotsQueryComputerRegExp)
+    .optional()
+    .describe(
+      "Whose computer, as person:<id> or bot:<id>. Absent, the one this Bot runs on for the caller.",
+    ),
+});
+
+export const getWorkspaceSnapshotsResponseSnapshotsMax = 100;
+
+export const GetWorkspaceSnapshotsResponse = zod.object({
+  computer: zod
+    .string()
+    .describe("Whose computer, as person:<id> or bot:<id>."),
+  available: zod
+    .boolean()
+    .describe(
+      "False where this OpenBot keeps no saved copies of computers. snapshots is then empty.",
+    ),
+  canRestore: zod
+    .boolean()
+    .describe("Whether the caller may restore this computer."),
+  snapshots: zod
+    .array(
+      zod
+        .object({
+          id: zod.string().describe("Names the copy in restoreComputer."),
+          takenAt: zod.iso
+            .datetime({ offset: true })
+            .describe("When it was saved."),
+          kind: zod
+            .string()
+            .describe(
+              "daily is the copy OpenBot saves once a day. before-restore is the one it saved just before a restore.",
+            ),
+        })
+        .describe("One saved copy of a computer's files and browser sign-ins."),
+    )
+    .max(getWorkspaceSnapshotsResponseSnapshotsMax)
+    .describe("Newest first."),
+  restore: zod
+    .union([
+      zod
+        .object({
+          id: zod.string(),
+          snapshotId: zod.string().describe("The copy it restores."),
+          snapshotTakenAt: zod.iso
+            .datetime({ offset: true })
+            .describe("When that copy was saved."),
+          beforeSnapshotId: zod
+            .string()
+            .nullable()
+            .describe(
+              "The copy of the computer as it was just before, once it is saved. Null until then.",
+            ),
+          state: zod
+            .string()
+            .describe(
+              "running is under way, and the computer is not yet back. done is back on the copy. failed says why in error.",
+            ),
+          startedAt: zod.iso.datetime({ offset: true }),
+          finishedAt: zod.iso
+            .datetime({ offset: true })
+            .nullable()
+            .describe("When it was done or failed. Null while it runs."),
+          error: zod
+            .string()
+            .nullable()
+            .describe(
+              "Why it failed, written for the person who asked. Null unless it failed.",
+            ),
+        })
+        .describe("One restore of a computer from a saved copy."),
+      zod.null(),
+    ])
+    .describe(
+      "The latest restore of this computer, or null when it was never restored.",
+    ),
+});
+
+/**
+ * Put the computer this Bot runs on back the way it was in one of its saved copies, and record it on the audit trail. Nothing is restored unless someone asks: OpenBot first saves the computer as it is now (kept as a copy of kind before-restore), then replaces every file and browser sign-in on it with the copy's and starts it again. Every Bot on that computer goes back, and routines that use it wait until it is back. The answer comes at once, with the restore running; read getWorkspaceSnapshots for how it ends. computer names another person's computer, as in getWorkspaceSnapshots. Only an administrator of the organization, or the person whose computer it is when they own the Bot, may do this. One restore of a computer runs at a time.
+ * @summary Restore a computer from a saved copy
+ */
+
+export const restoreComputerPathBotIdRegExp = new RegExp("\\S");
+
+export const RestoreComputerParams = zod.object({
+  organizationId: zod
+    .string()
+    .min(1)
+    .describe(
+      "The organization, by its id or its slug. One the caller is not a member of answers as one that does not exist, `default` included.",
+    ),
+  botId: zod
+    .string()
+    .min(1)
+    .regex(restoreComputerPathBotIdRegExp)
+    .describe("The Bot's id."),
+});
+
+export const restoreComputerHeaderIdempotencyKeyMax = 128;
+
+export const RestoreComputerHeader = zod.object({
+  "Idempotency-Key": zod
+    .string()
+    .min(1)
+    .max(restoreComputerHeaderIdempotencyKeyMax)
+    .describe(
+      "Generated by the caller for each write it means to make once. Reuse the same key and the same request for 24 hours after an uncertain response; the same key with a different request is a conflict.",
+    ),
+});
+
+export const restoreComputerBodySnapshotIdMax = 200;
+
+export const restoreComputerBodySnapshotIdRegExp = new RegExp("\\S");
+export const restoreComputerBodyComputerMax = 300;
+
+export const restoreComputerBodyComputerRegExp = new RegExp(
+  "^(person|bot):\\S+$",
+);
+
+export const RestoreComputerBody = zod.object({
+  snapshotId: zod
+    .string()
+    .min(1)
+    .max(restoreComputerBodySnapshotIdMax)
+    .regex(restoreComputerBodySnapshotIdRegExp)
+    .describe("The saved copy to restore, from getWorkspaceSnapshots."),
+  computer: zod
+    .string()
+    .min(1)
+    .max(restoreComputerBodyComputerMax)
+    .regex(restoreComputerBodyComputerRegExp)
+    .optional()
+    .describe(
+      "Whose computer, as person:<id> or bot:<id>. Absent, the one this Bot runs on for the caller.",
+    ),
+});
+
+export const RestoreComputerResponse = zod
+  .object({
+    id: zod.string(),
+    snapshotId: zod.string().describe("The copy it restores."),
+    snapshotTakenAt: zod.iso
+      .datetime({ offset: true })
+      .describe("When that copy was saved."),
+    beforeSnapshotId: zod
+      .string()
+      .nullable()
+      .describe(
+        "The copy of the computer as it was just before, once it is saved. Null until then.",
+      ),
+    state: zod
+      .string()
+      .describe(
+        "running is under way, and the computer is not yet back. done is back on the copy. failed says why in error.",
+      ),
+    startedAt: zod.iso.datetime({ offset: true }),
+    finishedAt: zod.iso
+      .datetime({ offset: true })
+      .nullable()
+      .describe("When it was done or failed. Null while it runs."),
+    error: zod
+      .string()
+      .nullable()
+      .describe(
+        "Why it failed, written for the person who asked. Null unless it failed.",
+      ),
+  })
+  .describe("One restore of a computer from a saved copy.");
+
+/**
  * Return a picture of the Bot's screen as it is now, as a base64 PNG in JSON. A computer that is asleep or starting is not woken: the answer is ready false with its state.
  * @summary Read one frame of a Bot's screen
  */
@@ -469,7 +672,11 @@ export const ReadComputerPageResponse = zod.object({
     ),
   challenge: zod
     .object({
-      kind: zod.enum(["cloudflare", "visible-challenge"]),
+      kind: zod
+        .string()
+        .describe(
+          "What the page raised: a Cloudflare check, a visible human check, or a request for a passkey, which a passkey kept on the person's own device can't answer in a Bot's computer.",
+        ),
       reason: zod.string(),
       requestId: zod.string(),
     })
@@ -533,9 +740,20 @@ export const GetComputerControlResponse = zod
         toolCallId: zod.string().optional(),
         reason: zod.string(),
         source: zod
-          .enum(["model", "cloudflare", "visible-challenge", "manual"])
+          .string()
           .describe(
-            "Who raised it: the Bot (model), a check the page raised, or the person themselves (manual).",
+            "Who raised it: the Bot (model), a check the page raised (cloudflare, visible-challenge, or passkey when the page asked for a passkey), or the person themselves (manual).",
+          ),
+        passkey: zod
+          .object({
+            host: zod
+              .string()
+              .describe("The site that asked, such as accounts.google.com."),
+            askedAt: zod.string().describe("When it asked."),
+          })
+          .optional()
+          .describe(
+            "Set when the page asked for a passkey while this request was open. A passkey kept on the person's own device can't be used in a Bot's computer, so they sign in another way on the page, such as its \"Try another way\".",
           ),
         status: zod.string(),
         createdAt: zod.string(),
@@ -629,9 +847,20 @@ export const RequestComputerControlResponse = zod
         toolCallId: zod.string().optional(),
         reason: zod.string(),
         source: zod
-          .enum(["model", "cloudflare", "visible-challenge", "manual"])
+          .string()
           .describe(
-            "Who raised it: the Bot (model), a check the page raised, or the person themselves (manual).",
+            "Who raised it: the Bot (model), a check the page raised (cloudflare, visible-challenge, or passkey when the page asked for a passkey), or the person themselves (manual).",
+          ),
+        passkey: zod
+          .object({
+            host: zod
+              .string()
+              .describe("The site that asked, such as accounts.google.com."),
+            askedAt: zod.string().describe("When it asked."),
+          })
+          .optional()
+          .describe(
+            "Set when the page asked for a passkey while this request was open. A passkey kept on the person's own device can't be used in a Bot's computer, so they sign in another way on the page, such as its \"Try another way\".",
           ),
         status: zod.string(),
         createdAt: zod.string(),
@@ -728,9 +957,20 @@ export const TakeComputerControlResponse = zod
         toolCallId: zod.string().optional(),
         reason: zod.string(),
         source: zod
-          .enum(["model", "cloudflare", "visible-challenge", "manual"])
+          .string()
           .describe(
-            "Who raised it: the Bot (model), a check the page raised, or the person themselves (manual).",
+            "Who raised it: the Bot (model), a check the page raised (cloudflare, visible-challenge, or passkey when the page asked for a passkey), or the person themselves (manual).",
+          ),
+        passkey: zod
+          .object({
+            host: zod
+              .string()
+              .describe("The site that asked, such as accounts.google.com."),
+            askedAt: zod.string().describe("When it asked."),
+          })
+          .optional()
+          .describe(
+            "Set when the page asked for a passkey while this request was open. A passkey kept on the person's own device can't be used in a Bot's computer, so they sign in another way on the page, such as its \"Try another way\".",
           ),
         status: zod.string(),
         createdAt: zod.string(),
@@ -827,9 +1067,20 @@ export const ReleaseComputerControlResponse = zod
         toolCallId: zod.string().optional(),
         reason: zod.string(),
         source: zod
-          .enum(["model", "cloudflare", "visible-challenge", "manual"])
+          .string()
           .describe(
-            "Who raised it: the Bot (model), a check the page raised, or the person themselves (manual).",
+            "Who raised it: the Bot (model), a check the page raised (cloudflare, visible-challenge, or passkey when the page asked for a passkey), or the person themselves (manual).",
+          ),
+        passkey: zod
+          .object({
+            host: zod
+              .string()
+              .describe("The site that asked, such as accounts.google.com."),
+            askedAt: zod.string().describe("When it asked."),
+          })
+          .optional()
+          .describe(
+            "Set when the page asked for a passkey while this request was open. A passkey kept on the person's own device can't be used in a Bot's computer, so they sign in another way on the page, such as its \"Try another way\".",
           ),
         status: zod.string(),
         createdAt: zod.string(),
@@ -926,9 +1177,20 @@ export const CancelComputerControlResponse = zod
         toolCallId: zod.string().optional(),
         reason: zod.string(),
         source: zod
-          .enum(["model", "cloudflare", "visible-challenge", "manual"])
+          .string()
           .describe(
-            "Who raised it: the Bot (model), a check the page raised, or the person themselves (manual).",
+            "Who raised it: the Bot (model), a check the page raised (cloudflare, visible-challenge, or passkey when the page asked for a passkey), or the person themselves (manual).",
+          ),
+        passkey: zod
+          .object({
+            host: zod
+              .string()
+              .describe("The site that asked, such as accounts.google.com."),
+            askedAt: zod.string().describe("When it asked."),
+          })
+          .optional()
+          .describe(
+            "Set when the page asked for a passkey while this request was open. A passkey kept on the person's own device can't be used in a Bot's computer, so they sign in another way on the page, such as its \"Try another way\".",
           ),
         status: zod.string(),
         createdAt: zod.string(),
@@ -1027,9 +1289,20 @@ export const RequestComputerSecretResponse = zod
         toolCallId: zod.string().optional(),
         reason: zod.string(),
         source: zod
-          .enum(["model", "cloudflare", "visible-challenge", "manual"])
+          .string()
           .describe(
-            "Who raised it: the Bot (model), a check the page raised, or the person themselves (manual).",
+            "Who raised it: the Bot (model), a check the page raised (cloudflare, visible-challenge, or passkey when the page asked for a passkey), or the person themselves (manual).",
+          ),
+        passkey: zod
+          .object({
+            host: zod
+              .string()
+              .describe("The site that asked, such as accounts.google.com."),
+            askedAt: zod.string().describe("When it asked."),
+          })
+          .optional()
+          .describe(
+            "Set when the page asked for a passkey while this request was open. A passkey kept on the person's own device can't be used in a Bot's computer, so they sign in another way on the page, such as its \"Try another way\".",
           ),
         status: zod.string(),
         createdAt: zod.string(),
@@ -1209,7 +1482,11 @@ export const SnapshotComputerResponse = zod.object({
     ),
   challenge: zod
     .object({
-      kind: zod.enum(["cloudflare", "visible-challenge"]),
+      kind: zod
+        .string()
+        .describe(
+          "What the page raised: a Cloudflare check, a visible human check, or a request for a passkey, which a passkey kept on the person's own device can't answer in a Bot's computer.",
+        ),
       reason: zod.string(),
       requestId: zod.string(),
     })
@@ -1298,7 +1575,11 @@ export const NavigateComputerResponse = zod.object({
     ),
   challenge: zod
     .object({
-      kind: zod.enum(["cloudflare", "visible-challenge"]),
+      kind: zod
+        .string()
+        .describe(
+          "What the page raised: a Cloudflare check, a visible human check, or a request for a passkey, which a passkey kept on the person's own device can't answer in a Bot's computer.",
+        ),
       reason: zod.string(),
       requestId: zod.string(),
     })
@@ -1382,7 +1663,11 @@ export const ClickComputerResponse = zod.object({
     ),
   challenge: zod
     .object({
-      kind: zod.enum(["cloudflare", "visible-challenge"]),
+      kind: zod
+        .string()
+        .describe(
+          "What the page raised: a Cloudflare check, a visible human check, or a request for a passkey, which a passkey kept on the person's own device can't answer in a Bot's computer.",
+        ),
       reason: zod.string(),
       requestId: zod.string(),
     })
@@ -1464,7 +1749,11 @@ export const TypeComputerResponse = zod.object({
     ),
   challenge: zod
     .object({
-      kind: zod.enum(["cloudflare", "visible-challenge"]),
+      kind: zod
+        .string()
+        .describe(
+          "What the page raised: a Cloudflare check, a visible human check, or a request for a passkey, which a passkey kept on the person's own device can't answer in a Bot's computer.",
+        ),
       reason: zod.string(),
       requestId: zod.string(),
     })
@@ -1543,7 +1832,11 @@ export const PressComputerKeyResponse = zod.object({
     ),
   challenge: zod
     .object({
-      kind: zod.enum(["cloudflare", "visible-challenge"]),
+      kind: zod
+        .string()
+        .describe(
+          "What the page raised: a Cloudflare check, a visible human check, or a request for a passkey, which a passkey kept on the person's own device can't answer in a Bot's computer.",
+        ),
       reason: zod.string(),
       requestId: zod.string(),
     })
@@ -1621,7 +1914,11 @@ export const ScrollComputerResponse = zod.object({
     ),
   challenge: zod
     .object({
-      kind: zod.enum(["cloudflare", "visible-challenge"]),
+      kind: zod
+        .string()
+        .describe(
+          "What the page raised: a Cloudflare check, a visible human check, or a request for a passkey, which a passkey kept on the person's own device can't answer in a Bot's computer.",
+        ),
       reason: zod.string(),
       requestId: zod.string(),
     })
