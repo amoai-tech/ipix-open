@@ -363,10 +363,10 @@ test("the summary counts in the singular and the plural", () => {
 test("on a hosted OpenBot, optional gaps don't promise a way to add each", () => {
   const gap = ROW({ id: "apps", ready: false, status: "needs_setup" });
   expect(summaryOf([gap], true)).toBe(
-    "OpenBot is ready to use. 1 optional feature isn't set up yet.",
+    `${appConfig.brand.productName} is ready to use. 1 optional feature isn't set up yet.`,
   );
   expect(summaryOf([gap])).toBe(
-    "OpenBot is ready to use. 1 optional feature isn't set up yet. Each says how to add it.",
+    `${appConfig.brand.productName} is ready to use. 1 optional feature isn't set up yet. Each says how to add it.`,
   );
 });
 

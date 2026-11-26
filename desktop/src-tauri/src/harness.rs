@@ -1009,8 +1009,15 @@ mod tests {
     #[test]
     fn install_never_asks_for_a_bot_the_folders_release_does_not_include() {
         let root = scratch("old-release");
-        // 1.0.3 had no TypeScript LangGraph Bot; CrewAI stands in for what it did have.
-        write_crewai_manifest(&root);
+        // 1.0.3 had no TypeScript LangGraph Bot. Use the retained Python LangGraph
+        // engine to represent an older release; CrewAI is retired in iPix.
+        std::fs::write(
+            crate::deployment::images_path(&root),
+            "{ \"version\": \"v1.0.3\", \"images\": { \
+             \"agent-langgraph-agui\": { \
+             \"reference\": \"ghcr.io/copilotkit/openbot-agent-langgraph-agui@sha256:abc\" } } }",
+        )
+        .expect("old release manifest is written");
         let asked = Some(choice(DEFAULT_HARNESS));
         assert!(picked(asked.as_ref(), &root)
             .expect_err("1.0.3 has no such Bot")
@@ -1024,7 +1031,7 @@ mod tests {
         );
         // Without one, a Bot the release has, which installs.
         let instead = the_release_includes(asked.clone(), None, &root);
-        assert_eq!(instead, Some(choice("crewai")));
+        assert_eq!(instead, Some(choice("langgraph")));
         assert!(picked(instead.as_ref(), &root).is_ok());
 
         // Once the folder is on a release with it, the Bot asked for is what installs.
