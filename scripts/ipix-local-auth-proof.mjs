@@ -17,7 +17,7 @@ for (const [name, port, hostPort] of [
   [db, "5432/tcp", "56222"],
   ["supabase_kong_ipixopen1505", "8000/tcp", "56221"],
 ]) {
-  const info = JSON.parse(run("docker", ["inspect", name]))[0];
+  const info = JSON.parse(run("docker", ["container", "inspect", name]))[0];
   assert.equal(info.Config.Labels["com.supabase.cli.workdir"], root);
   assert.equal(info.Config.Labels["com.supabase.cli.project"], "ipixopen1505");
   assert.deepEqual(info.NetworkSettings.Ports[port], [
@@ -42,7 +42,18 @@ async function call(path, { method = "GET", body, session } = {}) {
     signal: AbortSignal.timeout(15000),
     ...(body && { body: JSON.stringify(body) }),
   });
-  return { status: res.status, ok: res.ok, data: await res.json() };
+  // Preserve HTTP status even for a non-JSON proxy/server failure.
+  const data = await res.json().catch(() => null);
+  return { status: res.status, ok: res.ok, data };
+}
+
+function authFailure(result) {
+  const code = result.data?.error_code ?? result.data?.code;
+  const safeCode =
+    typeof code === "string" && /^[a-z0-9_]{1,80}$/.test(code)
+      ? code
+      : "unknown_error";
+  return `HTTP ${result.status} (${safeCode})`;
 }
 
 const customers = [
@@ -69,14 +80,36 @@ for (const customer of customers) {
     body,
   });
   if (!login.ok) {
+    // invalid_credentials also covers wrong passwords. Only create a missing
+    // synthetic account, never retry signup for an existing account.
+    assert(
+      login.status === 400 && login.data?.error_code === "invalid_credentials",
+      `Synthetic sign-in failed: ${authFailure(login)}`,
+    );
+    const existing = run("docker", [
+      "exec",
+      db,
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-Atc",
+      `select count(*) from auth.users where email = '${customer.email}';`,
+    ]).trim();
+    assert.equal(
+      existing,
+      "0",
+      `Synthetic sign-in failed: ${authFailure(login)}; existing account`,
+    );
     const signup = await call("/auth/v1/signup", { method: "POST", body });
-    assert(signup.ok, `Synthetic signup failed: HTTP ${signup.status}`);
+    assert(signup.ok, `Synthetic signup failed: ${authFailure(signup)}`);
     login = await call("/auth/v1/token?grant_type=password", {
       method: "POST",
       body,
     });
   }
-  assert(login.ok, `Synthetic sign-in failed: HTTP ${login.status}`);
+  assert(login.ok, `Synthetic sign-in failed: ${authFailure(login)}`);
   assert.equal(login.data.user.email, customer.email);
   assert(uuid.test(login.data.user.id));
   customer.id = login.data.user.id;
@@ -120,23 +153,43 @@ for (const c of customers) {
   assert(profile.ok);
   assert.deepEqual(profile.data, [{ id: c.id }]);
   const membership = await get(
-    `/rest/v1/org_members?select=org_id,role&user_id=eq.${c.id}`,
+    "/rest/v1/org_members?select=org_id,user_id,role",
   );
   assert(membership.ok);
-  assert.deepEqual(membership.data, [{ org_id: c.org, role: "owner" }]);
+  assert.deepEqual(membership.data, [
+    { org_id: c.org, user_id: c.id, role: "owner" },
+  ]);
+  const organizations = await get("/rest/v1/organizations?select=id,owner_id");
+  assert(organizations.ok);
+  assert.deepEqual(organizations.data, [{ id: c.org, owner_id: c.id }]);
   const brands = await get("/rest/v1/brands?select=id");
   assert(brands.ok);
   assert.deepEqual(brands.data, [{ id: c.brand }]);
   const foreign = customers.find((other) => other.id !== c.id);
-  const denied = await get(`/rest/v1/brands?select=id&id=eq.${foreign.brand}`);
-  assert(denied.ok);
-  assert.deepEqual(denied.data, []);
+  for (const path of [
+    `/rest/v1/brands?select=id&id=eq.${foreign.brand}`,
+    `/rest/v1/organizations?select=id&id=eq.${foreign.org}`,
+    `/rest/v1/org_members?select=org_id&org_id=eq.${foreign.org}`,
+  ]) {
+    const denied = await get(path);
+    assert(denied.ok, `Foreign read failed: HTTP ${denied.status}`);
+    assert.deepEqual(denied.data, []);
+  }
   console.log(
     "PASS customer " +
       c.label +
-      ": real session, profile, organization, own brand, foreign brand denied",
+      ": real session, own profile/org/membership/brand, foreign org/membership/brand denied",
   );
 }
-const anonymous = await call("/rest/v1/brands?select=id");
-assert(!anonymous.ok || anonymous.data.length === 0);
-console.log("PASS anonymous brand access denied");
+for (const table of ["brands", "organizations", "org_members"]) {
+  const anonymous = await call(`/rest/v1/${table}?select=*`);
+  if (anonymous.ok) {
+    assert.deepEqual(anonymous.data, []);
+  } else {
+    assert(
+      [401, 403].includes(anonymous.status),
+      `Unexpected anonymous response: HTTP ${anonymous.status}`,
+    );
+  }
+}
+console.log("PASS anonymous brand, organization and membership access denied");
