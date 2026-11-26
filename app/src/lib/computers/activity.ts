@@ -605,6 +605,19 @@ export function readOutcome(content: unknown): ToolOutcome | null {
   if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
     const outcome = parsed as Record<string, unknown>;
     if (outcome.waiting === true) return null;
+    /*
+     * A STEP THE RUN ENDED UNDER. When a run ends with a step still open (the person's Stop, a
+     * server that restarted, a stream cut short), the runtime closes the step with an answer of its
+     * own, `{ status: "stopped" | "error", reason, message }`, which has no `ok`. Found in an
+     * end-to-end run with the server restarted part way through a save: read as a computer's answer,
+     * it drew "Saved a file" for a file that was never written.
+     */
+    if (
+      outcome.ok === undefined &&
+      (outcome.status === "stopped" || outcome.status === "error") &&
+      typeof outcome.message === "string"
+    )
+      return { ...outcome, ok: false, reason: outcome.message };
     return { ...outcome, ok: outcome.ok !== false };
   }
   if (doneByPerson(text)) return { ok: true, doneByPerson: true, reason: text };
@@ -840,6 +853,18 @@ export function detailsOf(
       output: outputOf(result),
       ...(typeof result.exitCode === "number"
         ? { exitCode: result.exitCode }
+        : {}),
+      /*
+       * Not run: the pane must not say "Exit 0" about a command the computer never ran. A command
+       * that ran has an exit code; an answer with none that did not work (the gate refused the step,
+       * the computer could not be reached) is a command that did not run. It read as "Ran … Exit 0"
+       * beside a card saying "Didn't run", and that was taken for the command having run.
+       */
+      ...(result.ok === false &&
+      typeof result.exitCode !== "number" &&
+      result.refused !== true &&
+      result.doneByPerson !== true
+        ? { failed: true }
         : {}),
       ...notTheBot,
       ...(result.truncated === true ? { truncated: true } : {}),

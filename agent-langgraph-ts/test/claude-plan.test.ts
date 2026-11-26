@@ -181,7 +181,7 @@ test("The claude-plan route asks the Claude engine's /model, with the deployment
     );
     assert.deepEqual(
       (body.tools as { name: string }[]).map((tool) => tool.name),
-      ["get_weather"],
+      ["get_weather", "recall_earlier_results"],
     );
   } finally {
     await claude.close();
@@ -264,6 +264,54 @@ test("A step's tool call and the next step stay on one Claude query: the same th
     await claude.close();
     callback.closeAllConnections();
     await new Promise<void>((resolve) => callback.close(() => resolve()));
+  }
+});
+
+/*
+ * One Claude engine serves every organization. The same thread id from two organizations, for a
+ * Bot of the same id, has to be two Claude queries: one query is one transcript and one set of
+ * turns, and one organization would answer inside the other's. A run with no organization keeps
+ * the name it always had, so a thread that already has a query keeps it.
+ */
+test("The same thread in two organizations is two Claude queries; with no organization the name is unchanged", async () => {
+  const claude = await claudeEngine(() => fixture("text"));
+  const inOrganization = (organization?: string) =>
+    conversation({
+      forwardedProps: {
+        openbotModelRoute: claudeRoute,
+        ...(organization ? { openbotOrganization: organization } : {}),
+      },
+    });
+  try {
+    await withEngine({ env: env(claude.url) }, async (base) => {
+      await run(base, inOrganization("org-a"));
+      await run(base, inOrganization("org-b"));
+      await run(base, inOrganization());
+    });
+    const [a, b, none] = claude.requests.map(
+      (request) => request.body.threadId,
+    );
+    assert.equal(claude.requests.length, 3);
+    assert.notEqual(a, b);
+    assert.notEqual(a, none);
+    assert.notEqual(b, none);
+    assert.equal(
+      a,
+      createHash("sha256")
+        .update(JSON.stringify(["test-bot", "thread-1", "org-a"]))
+        .digest("hex"),
+    );
+    // The name a thread's query had before organizations joined it.
+    assert.equal(none, threadOf("test-bot", "thread-1"));
+    for (const request of claude.requests)
+      assert.equal(
+        (request.body.forwardedProps as Record<string, unknown>)
+          .openbotOrganization,
+        undefined,
+        "the organization is not sent on to the Claude engine",
+      );
+  } finally {
+    await claude.close();
   }
 });
 

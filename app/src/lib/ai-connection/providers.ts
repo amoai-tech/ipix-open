@@ -1,6 +1,7 @@
 import type {
   AiConnectionLogin,
   AiConnectionProvider,
+  AiConnectionProviderAnswer,
 } from "@/lib/api/generated/model";
 
 /**
@@ -67,6 +68,14 @@ export const AI_PROVIDERS: AiProvider[] = [
     mark: "unbiased",
   },
   {
+    id: "trustedrouter",
+    name: "TrustedRouter",
+    summary: "Use a TrustedRouter API key for models from many providers.",
+    keySummary: "Use a TrustedRouter API key for models from many providers.",
+    logins: ["endpoint"],
+    mark: "trustedrouter",
+  },
+  {
     id: "openai-compatible",
     name: "Any OpenAI-compatible endpoint",
     summary: "Azure, Bedrock, Mistral, DeepSeek, Ollama, vLLM or your own.",
@@ -104,6 +113,12 @@ export const ENDPOINT_PRESETS: Partial<
     keyUrl: "https://platform.unbiased.ai/dashboard/keys",
     keyLink: "Get an Unbiased AI API key",
   },
+  trustedrouter: {
+    baseUrl: "https://api.trustedrouter.com/v1",
+    model: "anthropic/claude-sonnet-5.5",
+    keyUrl: "https://trustedrouter.com/console/api-keys",
+    keyLink: "Get a TrustedRouter API key",
+  },
 };
 
 /**
@@ -119,8 +134,70 @@ export function loginsHere(
   );
 }
 
+/**
+ * The ways in for a person's own AI: the provider's sign-in first where the server runs it itself
+ * (`signIns`), then the provider's key or address. The sign-in is the one the setup window offers
+ * for that provider: a ChatGPT or Claude plan (`plan`), or a Google, xAI or Unbiased AI sign-in
+ * (`oauth`). The server keeps it for the person and renews it, so it is never one OpenBot Desktop
+ * holds, even inside Desktop: the server runs the person's Bots.
+ */
+export function personalLogins(
+  provider: AiProvider,
+  signIns: readonly AiConnectionProviderAnswer[],
+): AiConnectionLogin[] {
+  const signIn = signIns.includes(provider.id)
+    ? provider.logins.find((login) => login === "plan" || login === "oauth")
+    : undefined;
+  return [...(signIn ? [signIn] : []), ...loginsHere(provider, false)];
+}
+
+/**
+ * The providers whose sign-in an admin on OpenBot Cloud may share as the organization's AI: a
+ * ChatGPT or Claude plan, or a Google or xAI sign-in (replaceAiConnection with `plan` or `oauth`).
+ * Unbiased AI's sign-in ends in a key kept for the person alone, so it is never shared.
+ */
+const SHAREABLE: readonly AiConnectionProvider[] = [
+  "openai",
+  "anthropic",
+  "google",
+  "xai",
+];
+
+/**
+ * The ways in for the organization's AI on OpenBot Cloud in a plain browser: the admin's own
+ * sign-in first, exactly as Connect your AI offers it, where it can be shared; then the key or
+ * address.
+ */
+export function sharedLogins(
+  provider: AiProvider,
+  signIns: readonly AiConnectionProviderAnswer[],
+): AiConnectionLogin[] {
+  return SHAREABLE.includes(provider.id)
+    ? personalLogins(provider, signIns)
+    : loginsHere(provider, false);
+}
+
+/** What a person calls a provider's sign-in: "Claude plan", "ChatGPT plan", "Google sign-in". */
+export function signInWords(
+  provider: AiConnectionProviderAnswer,
+  login: AiConnectionLogin,
+): string {
+  if (login === "plan")
+    return provider === "anthropic" ? "Claude plan" : "ChatGPT plan";
+  return `${provider === "google" ? "Google" : (providerById(provider)?.name ?? provider)} sign-in`;
+}
+
+/** Whether a way in is a sign-in in the browser: a plan or a provider's own. */
+export function isSignIn(login: AiConnectionLogin | null): boolean {
+  return login === "plan" || login === "oauth";
+}
+
+/**
+ * The row for a provider, by its id. The server's answer can name a provider this app doesn't know
+ * (the list grows, api/README.md "Enums that grow"): that one has no row, and is shown by its id.
+ */
 export function providerById(
-  id: AiConnectionProvider | null | undefined,
+  id: AiConnectionProviderAnswer | null | undefined,
 ): AiProvider | undefined {
   return AI_PROVIDERS.find((provider) => provider.id === id);
 }

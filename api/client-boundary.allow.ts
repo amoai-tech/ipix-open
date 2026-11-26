@@ -210,6 +210,24 @@ export const ALLOWED: Allowed[] = [
     why: "Better Auth's own address for the organization a session works in, which switching sets",
   },
   {
+    file: "mobile/src/api/request.ts",
+    what: "/api/auth/hosted/sign-in",
+    rule: "sign-in-protocol",
+    why: "where the phone renews a hosted OpenBot's sign-in when the server names no other, opened in the in-app browser",
+  },
+  {
+    file: "app/src/lib/auth/hosted.ts",
+    what: "/api/auth/hosted/sign-in",
+    rule: "sign-in-protocol",
+    why: "a hosted OpenBot's sign-in, opened as a page that leaves for OpenBot by CopilotKit's own sign-in and comes back",
+  },
+  {
+    file: "app/src/lib/auth/hosted.ts",
+    what: "/api/auth/hosted/sign-out",
+    rule: "sign-in-protocol",
+    why: "a hosted OpenBot's sign-out, opened as a page that leaves for OpenBot by CopilotKit's own sign-out and comes back to the sign-in screen",
+  },
+  {
     file: "app/src/lib/auth/resume.ts",
     what: "/api/plugins/arcade/verify",
     rule: "sign-in-protocol",
@@ -278,6 +296,13 @@ export const ALLOWED: Allowed[] = [
     rule: "installed-client",
     why: "where released Desktop shells, 1.0.2 and 1.0.3, ask for the connect code they hand a Recorder",
   },
+  // The app's own page.
+  {
+    file: "app/src/lib/chunk-recovery.ts",
+    what: "fetch()",
+    rule: "before-sign-in",
+    why: "reads the app's own page, `/`, which answers anybody, to learn which build the OpenBot serves before loading it again; it calls nothing of the API",
+  },
   // Desktop's native side.
   {
     file: "desktop/src-tauri/src/main.rs",
@@ -328,6 +353,18 @@ export const ALLOWED: Allowed[] = [
     why: "the Recorder host's handoff, from Rust, which has no generated client",
   },
   {
+    file: "desktop/src-tauri/src/move_to_cloud.rs",
+    what: /^\/api\/v2\/(people\/me\/organizations|organizations\/\{\}\{path\})$/,
+    rule: "hand-built-v2",
+    why: "the move to OpenBot Cloud, from Rust, which has no generated client: the export from the OpenBot on this computer and the import into OpenBot Cloud, in the organization each answers for the person",
+  },
+  {
+    file: "desktop/src-tauri/src/move_to_cloud/tests.rs",
+    what: /^\/api\/v2\/(people\/me\/organizations|organizations\/(default|org_mine|org_acme|\{\})\/((exports|imports)(\/[a-z0-9_]+)*\/?|export-estimate|people\/me(\/ai-connection)?))$/,
+    rule: "hand-built-v2",
+    why: "the move's tests, against an OpenBot here and an OpenBot Cloud that answer as the API describes, in each organization a person may choose",
+  },
+  {
     file: "desktop/src-tauri/src/install_token.rs",
     what: "/api/install/enter",
     rule: "sign-in-protocol",
@@ -351,6 +388,18 @@ export const ALLOWED: Allowed[] = [
     what: "/.well-known/oauth-authorization-server/api/auth",
     rule: "before-sign-in",
     why: "OAuth's discovery document, which names the sign-in's addresses",
+  },
+  {
+    file: "desktop/src-tauri/src/connected/about.rs",
+    what: "/health",
+    rule: "before-sign-in",
+    why: "whether the OpenBot the app is connected to answers, for Get Troubleshooting Logs…, asked with no credential",
+  },
+  {
+    file: "desktop/src-tauri/src/connected/about.rs",
+    what: /^\/api\/v2\/(people\/me\/organizations|organizations\/\{organization\}\/(people\/me|deployment))$/,
+    rule: "hand-built-v2",
+    why: "what the OpenBot the app is connected to says about itself for Get Troubleshooting Logs… (getPerson, getDeployment), from Rust, which has no generated client",
   },
   {
     file: "desktop/src-tauri/src/connected/sign_in.rs",

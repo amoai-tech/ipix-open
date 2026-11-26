@@ -7,6 +7,10 @@
 **Legacy migration source only:** https://github.com/amoai-tech/ipixai
 **Source baselines:** legacy 13bf2af385ebbe68a78c652daf5cffa3db95df24; OpenBot v1.1.2 8826a0fe3827b80c519b6b8a274e74efbaef7868. Revalidate before each migration.
 
+## Version decision update — 2026-11-26
+
+Owner requested v1.2.0 as the next development foundation. The prior v1.1.2 deployment remains unchanged until the upgrade is reviewed and its synthetic runtime and rollback gates pass. See [v1.2.0 upgrade](../openbot-v1.2.0-upgrade.md) for the exact source, permission and migration gates. This supersedes the earlier v1.1.3 candidate selection only; the identity, tenant security, human approval and production cutover gates remain mandatory.
+
 ## Decision
 
 Build the new iPix application entirely in ipix-open. Copy and adapt proven iPix Mastra agents, tools, workflows, business logic, authorization, approval/save contracts and tests. **The legacy repository is source material, not a backend or runtime dependency.** No calls to the old Next.js application or its deployed APIs in the final architecture. Do not move the old UI wholesale or rebuild the packaged OpenBot server.

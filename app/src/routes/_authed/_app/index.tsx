@@ -19,12 +19,12 @@ import { heldFileOf } from "@/components/channels/composer/attachments";
 import { ModelPicker } from "@/components/channels/composer/model-picker";
 import { WorkingNow } from "@/components/channels/working-now";
 import { BusinessLink } from "@/components/edition/business-link";
+import { HomeField, useHomeIntro } from "@/components/home/home-field";
 import { SidebarToggleBar } from "@/components/layout/sidebar-toggle";
 import { StarterSuggestions } from "@/components/starter-tour/starter-suggestions";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toast";
-import { defaultAgentProfile } from "@/lib/agents/default-agent";
 import {
   type AgentProfile,
   agentListQueryOptions,
@@ -33,7 +33,7 @@ import {
 } from "@/lib/agents/queries";
 import { firstConversationGreeting } from "@/lib/auth/greeting";
 import { currentUserQueryOptions } from "@/lib/auth/queries";
-import { whyNoModelChoice } from "@/lib/bot-agents/queries";
+import { takesNoModelChoice } from "@/lib/bot-agents/queries";
 import {
   beginPendingStart,
   endPendingStart,
@@ -43,24 +43,30 @@ import {
   takeFailedStart,
 } from "@/lib/channels/pending-start";
 import { channelListQueryOptions } from "@/lib/channels/queries";
-import {
-  CoworkerRoutingRefusedError,
-  routeMessage,
-} from "@/lib/channels/route";
-import { useStartChannel } from "@/lib/channels/start";
+import { fallbackBot, useStartChannel } from "@/lib/channels/start";
 import {
   deploymentCapabilitiesQueryOptions,
   useAttachmentLimits,
 } from "@/lib/deployment/queries";
 import { editionOf } from "@/lib/edition-guard";
+import { useClearWhenHoldEnds } from "@/lib/held-ends";
 import {
-  type ConversationModel,
+  type Failure,
+  failureOf,
+  failureSaid,
+  isHeld,
+  loadFailure,
+  unavailableSaid,
+} from "@/lib/load-failure";
+import {
+  type ConversationModelInput,
   modelCatalogueQueryOptions,
 } from "@/lib/models/queries";
 import { useDraftModel } from "@/lib/models/run-model";
 import { newId } from "@/lib/new-id";
 import { takeInvitationLink } from "@/lib/organizations/invitation-link";
 import { useAnyBotSkillCommands } from "@/lib/plugins/skill-commands";
+import { cn } from "@/lib/utils";
 import { queryClient } from "@/query-client";
 
 /** How many Bots the home page shows before pointing to the rest. Two rows of two. */
@@ -68,22 +74,15 @@ const EXPLORE_SHOWN = 4;
 
 /**
  * Said when the Bot a message went to takes no model pick, so the pick was not saved. The person
- * picked before OpenBot picked the Bot, and a pick that silently does nothing is a surprise. The
- * action opens that Bot's Agents page, where what it runs on is shown.
+ * picked before OpenBot picked the Bot, and a pick that silently does nothing is a surprise. Whatever
+ * the reason (a Bot connected from outside OpenBot, or one set to hand work out), the person reads
+ * the same thing: the Bot picks its own model.
  */
-function sayModelNotUsed(
-  bot: AgentProfile,
-  why: "own-agent" | "hands-to-agents",
-  openAgents: () => void,
-) {
+function sayModelNotUsed(bot: AgentProfile) {
   toast.add({
     id: "home-model-not-used",
     type: "info",
-    title:
-      why === "hands-to-agents"
-        ? `${bot.name} hands work to agents, so it uses the model set on its Agents page.`
-        : `${bot.name} runs on its own agent, so it doesn't use the model you picked.`,
-    actionProps: { children: "Open Agents", onClick: openAgents },
+    title: `${bot.name} picks its own model, so it doesn't use the one you picked.`,
   });
 }
 
@@ -118,6 +117,7 @@ function RouteComponent() {
     data: agents,
     isPending: loading,
     isError: failed,
+    error: agentsError,
   } = useQuery(agentListQueryOptions());
   const explore = agents?.filter(isSharedWithYou);
   const capabilities = useQuery(deploymentCapabilitiesQueryOptions());
@@ -128,7 +128,7 @@ function RouteComponent() {
    * not true of it. A Bots list that fails to load is said under the composer already.
    */
   const personal = capabilities.data?.edition === "personal";
-  const { start, startChosen, pending } = useStartChannel();
+  const { startChosen, startPicked, pending } = useStartChannel();
   const router = useRouter();
   const navigate = useNavigate();
   // A start that failed behind its placeholder comes back here: its words in the box, its reason
@@ -139,12 +139,20 @@ function RouteComponent() {
   const ask = useSearch({ strict: false }).ask;
   const [asked] = useState(ask);
   const [restores, setRestores] = useState(0);
-  const [error, setError] = useState<string | null>(restored?.error ?? null);
+  const [error, setError] = useState<Failure | null>(restored?.error ?? null);
+  // A hold is about now: said until the organization answers again, then gone (lib/held-ends.ts).
+  // The words stay in the box to send again.
+  useClearWhenHoldEnds(error, () =>
+    setError((shown) => (shown === error ? null : shown)),
+  );
   /*
    * Whether the person has typed in the box since it was last filled. A start that fails while they
    * are writing something else does not overwrite it: it stays stashed, for the next home page.
    */
   const typed = useRef(false);
+  /* The message box's area, which the orb's field behind the page follows. */
+  const area = useRef<HTMLDivElement>(null);
+  const intro = useHomeIntro();
   useEffect(
     () =>
       onFailedStart(() => {
@@ -167,10 +175,7 @@ function RouteComponent() {
   const { commands: skillCommands } = useAnyBotSkillCommands(
     agents?.map((agent) => agent.id) ?? [],
   );
-  const fallback = defaultAgentProfile(
-    agents,
-    agents?.find((agent) => agent.visibility === "public"),
-  );
+  const fallback = fallbackBot(agents);
   /*
    * The model and thinking effort to run on, picked before OpenBot has picked the Bot. It starts on
    * the catalogue's default and is saved with the conversation the Bot answers in, before the first
@@ -181,12 +186,12 @@ function RouteComponent() {
 
   /**
    * The pick to save with a new conversation with `agentId`, and the line to say once it has started
-   * when that Bot takes no pick (`whyNoModelChoice`). Nothing to save, and nothing to say, while the
+   * when that Bot takes no pick (`takesNoModelChoice`). Nothing to save, and nothing to say, while the
    * pick is the default. A Bot that could not be read takes the pick, as the hook reads it.
    */
   const pickFor = async (
     agentId: string,
-  ): Promise<{ pick: ConversationModel | null; notUsed?: () => void }> => {
+  ): Promise<{ pick: ConversationModelInput | null; notUsed?: () => void }> => {
     const pick = draftModel.requested;
     if (!pick) return { pick: null };
     const bot =
@@ -194,17 +199,10 @@ function RouteComponent() {
       (await queryClient
         .fetchQuery(agentQueryOptions(agentId))
         .catch(() => undefined));
-    const why = bot ? await whyNoModelChoice(queryClient, bot) : null;
-    if (!bot || !why) return { pick };
+    if (!bot || !(await takesNoModelChoice(queryClient, bot))) return { pick };
     return {
       pick: null,
-      notUsed: () =>
-        sayModelNotUsed(bot, why, () => {
-          void router.navigate({
-            params: { agentId: bot.id },
-            to: "/bots/$agentId/agents",
-          });
-        }),
+      notUsed: () => sayModelNotUsed(bot),
     };
   };
 
@@ -238,32 +236,19 @@ function RouteComponent() {
         notUsed?.();
         return;
       }
-      let agentId: string | undefined;
-      try {
-        agentId = (await routeMessage(draft.text, undefined, draft.commandIds))
-          .agentId;
-      } catch (caught) {
-        if (
-          draft.commandIds.length ||
-          caught instanceof CoworkerRoutingRefusedError
-        )
-          throw caught;
-        agentId = fallback?.id;
-      }
-      if (!agentId)
-        throw new Error(
-          "There's no Bot to send this to. Try again in a moment.",
-        );
-      const { pick, notUsed } = await pickFor(agentId);
-      await start(agentId, draft.text, pick, pendingId, draft.attachments);
-      notUsed?.();
+      // OpenBot picks, as it does for a new conversation started with nobody in To:.
+      await startPicked({
+        text: draft.text,
+        skills: draft.commandIds,
+        roster: agents,
+        files: draft.attachments,
+        pendingId,
+        pickFor,
+      });
     } catch (caught) {
       stashFailedStart({
         text: draft.text,
-        error:
-          caught instanceof Error
-            ? caught.message
-            : "Couldn't start the conversation. Try again.",
+        error: failureOf(caught, "Couldn't start the conversation. Try again."),
         files: draft.attachments
           .map(heldFileOf)
           .filter((file) => file !== undefined),
@@ -280,10 +265,18 @@ function RouteComponent() {
       <SidebarToggleBar>
         <BusinessLink />
       </SidebarToggleBar>
-      <div className="flex-1 flex flex-col items-center justify-center w-full p-4 mt-8">
+      <div
+        className={cn(
+          "relative isolate flex-1 flex flex-col items-center justify-center w-full p-4 mt-8",
+          intro && "home-intro",
+        )}
+      >
+        {/* OpenBot's orb, spread out behind the message box. On the first Home of a visit it
+            draws itself in while the heading, the box and Explore Bots rise in (styles.css). */}
+        <HomeField area={area} intro={intro} />
         {/* No product-name label above the greeting: the sidebar already names the product, and a
             second heading over the first made the page open on a word that says nothing. */}
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center" data-intro="heading">
           <h1 className="text-2xl font-semibold tracking-tight text-center">
             {firstConversationGreeting(
               user,
@@ -293,6 +286,8 @@ function RouteComponent() {
         </div>
         <div
           className="mt-8 w-full flex flex-col items-center"
+          data-intro="box"
+          ref={area}
           onKeyDownCapture={() => {
             typed.current = true;
           }}
@@ -320,6 +315,8 @@ function RouteComponent() {
             key={restores}
             // Files wait in the box until the message has a conversation to go to; see `start`.
             holdsFilesUntilSent
+            // An unsent first message stays in the box when somebody looks elsewhere.
+            draftKey="home"
             attachmentLimits={attachmentLimits}
             modelPicker={
               <ModelPicker
@@ -366,7 +363,7 @@ function RouteComponent() {
               className="mt-2 w-full max-w-2xl text-sm text-destructive"
               role="alert"
             >
-              {error}
+              {failureSaid(error)}
             </p>
           ) : failed && agents === undefined ? (
             // The composer above is `disabled={!fallback}`, and a failed query does not by
@@ -380,8 +377,10 @@ function RouteComponent() {
               className="mt-2 w-full max-w-2xl text-sm text-destructive"
               role="alert"
             >
-              Couldn't load your Bots, so there's no one to send this to. Try
-              again in a moment.
+              {loadFailure(
+                agentsError,
+                "Couldn't load your Bots, so there's no one to send this to. Try again in a moment.",
+              )}
             </p>
           ) : null}
         </div>
@@ -391,11 +390,11 @@ function RouteComponent() {
          * somebody shared another Bot, so the rest are one "All Bots" away. Every state below
          * reserves the same two rows, so the composer above it does not move when the list settles.
          */}
-        <div className="mt-10 w-full max-w-2xl">
+        <div className="mt-10 w-full max-w-2xl" data-intro="explore">
           {loading || capabilities.isPending ? (
             <>
               <h2 className="font-semibold text-base">Explore Bots</h2>
-              <Skeleton className="mt-4 h-[140px]" />
+              <Skeleton className="mt-4 h-36" />
             </>
           ) : explore?.length ? (
             // Wins over `failed`: a failed background refetch does not clear TanStack Query's
@@ -418,7 +417,7 @@ function RouteComponent() {
                   </Link>
                 ) : null}
               </div>
-              <ul className="mt-4 grid min-h-[140px] grid-cols-1 content-start gap-3 sm:grid-cols-2">
+              <ul className="mt-4 grid min-h-36 grid-cols-1 content-start gap-3 sm:grid-cols-2">
                 {explore.slice(0, EXPLORE_SHOWN).map((agent) => (
                   <li className="min-w-0" key={agent.id}>
                     <Link search={{ agent: agent.id }} to="/channel/new">
@@ -428,7 +427,18 @@ function RouteComponent() {
                 ))}
               </ul>
             </section>
-          ) : personal ? null : failed && agents === undefined ? (
+          ) : personal ? null : failed &&
+            agents === undefined &&
+            isHeld(agentsError) &&
+            !error ? (
+            // OpenBot holding off (a move, a brief outage) is said once, under the composer, and
+            // the list fills in by itself when it is back (lib/load-failure.tsx). Saying the same
+            // sentence here again read as two things wrong.
+            <>
+              <h2 className="font-semibold text-base">Explore Bots</h2>
+              <Skeleton className="mt-4 h-[140px]" />
+            </>
+          ) : failed && agents === undefined ? (
             // `agents === undefined` narrows this to "the query has never once returned
             // successfully" — not merely "the last request errored". `?.length` alone can't
             // tell that apart from a slice that loaded and is genuinely empty: TanStack Query
@@ -439,10 +449,20 @@ function RouteComponent() {
             // working off that same, successfully loaded `agents`) proves.
             <>
               <h2 className="font-semibold text-base">Explore Bots</h2>
-              <Empty className="mt-4 h-[140px] border border-dashed border-destructive">
+              <Empty
+                className={
+                  // OpenBot holding off for now is not a failure (lib/load-failure.tsx).
+                  unavailableSaid(agentsError)
+                    ? "mt-4 h-36 border border-dashed"
+                    : "mt-4 h-36 border border-dashed border-destructive"
+                }
+              >
                 <EmptyHeader>
                   <EmptyTitle className="text-destructive">
-                    Couldn't load the Bots shared with you.
+                    {loadFailure(
+                      agentsError,
+                      "Couldn't load the Bots shared with you.",
+                    )}
                   </EmptyTitle>
                 </EmptyHeader>
               </Empty>
@@ -453,7 +473,7 @@ function RouteComponent() {
             // plain copy for both: an empty roster is a fact, not an error.
             <>
               <h2 className="font-semibold text-base">Explore Bots</h2>
-              <Empty className="mt-4 h-[140px] border border-dashed">
+              <Empty className="mt-4 h-36 border border-dashed">
                 <EmptyHeader>
                   <EmptyTitle className="text-muted-foreground">
                     Nobody has shared a Bot with you yet.

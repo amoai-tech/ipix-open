@@ -5,7 +5,7 @@ import {
   PageSection,
   PageShell,
 } from "@/components/layout/page-shell";
-import { AiModelSection } from "@/components/settings/ai-connection";
+import { CompanySignInSection } from "@/components/settings/company-sign-in";
 import { MessageListPreference } from "@/components/settings/message-list-preference";
 import { NameRow } from "@/components/settings/profile";
 import { StandingInstructionsRow } from "@/components/settings/standing-instructions";
@@ -34,7 +34,8 @@ function RouteComponent() {
    * to copy them.
    *
    * Connected accounts used to be a section below. It is its own screen now: a connector can need
-   * more from a person than one switch, and a section cannot grow a page's worth of that.
+   * more from a person than one switch, and a section cannot grow a page's worth of that. So is the
+   * AI Bots run on (Providers): several providers, each with a page of its own.
    */
   return (
     <PageShell
@@ -52,8 +53,8 @@ function RouteComponent() {
           <StandingInstructionsRow />
         </PageRows>
       </PageSection>
-      {/* Only in OpenBot Desktop, which holds the AI connection and changes it in its own window. */}
-      <AiModelSection />
+      {/* Only where the organization has identity providers: the person's company account, and the way to link it. */}
+      <CompanySignInSection />
       {/* Only in OpenBot Desktop, which sends usage data and keeps this choice. */}
       <UsageDataSection />
       <PageSection title="Appearance">
